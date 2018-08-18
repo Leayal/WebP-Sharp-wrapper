@@ -641,7 +641,7 @@ namespace WebPWrapper
                 pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
-                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer(pixelBuffer.GetBuffer().Length);
+                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer();
                 Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
@@ -738,7 +738,7 @@ namespace WebPWrapper
                 pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
-                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer(pixelBuffer.GetBuffer().Length);
+                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer();
                 Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
@@ -799,7 +799,7 @@ namespace WebPWrapper
                 pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
-                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer(pixelBuffer.GetBuffer().Length);
+                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer();
                 Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
                 //compress the input samples
@@ -843,7 +843,7 @@ namespace WebPWrapper
                 pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
-                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer(pixelBuffer.GetBuffer().Length);
+                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer();
                 Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
                 //compress the input samples

@@ -163,7 +163,8 @@ namespace WebPWrapper
             if (this._disposed) return;
             this._disposed = true;
 
-            this._handle.Free();
+            if (this._handle.IsAllocated)
+                this._handle.Free();
 
             this._buffer = null;
         }
