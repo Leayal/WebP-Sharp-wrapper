@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
     /// <summary>Features gathered from the bitstream</summary>
     [StructLayoutAttribute(LayoutKind.Sequential)]

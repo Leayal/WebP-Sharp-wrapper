@@ -2,7 +2,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
     /*
         private MemoryWriter webpMemory2;
@@ -43,7 +43,15 @@ namespace WebPWrapper
                 // Get the WebPContent size in bytes
                 int contentSizeWithoutRIFFHeader = Marshal.ReadInt32(data, 4);
                 this.capacity = contentSizeWithoutRIFFHeader + 8; // Because the we got above is starting from offset 8 of the real file.
-                this.allocPointer = Marshal.AllocHGlobal(this.capacity);
+                try
+                {
+                    this.allocPointer = Marshal.AllocHGlobal(this.capacity);
+                }
+                catch
+                {
+                    // Not enough minera--memory.
+                    return 0;
+                }
             }
 
             IntPtr newAdd = new IntPtr(allocPointer.ToInt32() + this.position);
@@ -53,7 +61,15 @@ namespace WebPWrapper
             {
                 // Buffer.MemoryCopy only exists in .NET 4.6 and up
                 // Buffer.MemoryCopy(data.ToPointer(), newAdd.ToPointer(), blocksize, blocksize);
-                UnsafeNativeMethods.MemoryCopy(newAdd.ToPointer(), data.ToPointer(), blocksize);
+                try
+                {
+                    UnsafeNativeMethods.MemoryCopy(newAdd.ToPointer(), data.ToPointer(), blocksize);
+                }
+                catch
+                {
+                    // In case someone freed the buffer in the memory while the memory copy is on going.
+                    return 0;
+                }
             }
             // Marshal.Copy(data, this.writer.data, this.writer.size, (int)data_size);
 
@@ -109,17 +125,35 @@ namespace WebPWrapper
                 // Get the WebPContent size in bytes
                 int contentSizeWithoutRIFFHeader = Marshal.ReadInt32(data, 4);
                 contentSizeWithoutRIFFHeader += 8; // Because the we got above is starting from offset 8 of the real file.
-                this.fs.SetLength(contentSizeWithoutRIFFHeader);
+                try
+                {
+                    this.fs.SetLength(contentSizeWithoutRIFFHeader);
+                }
+                catch
+                {
+                    // Pre-allocate size on disk failed. Either not enough space or I don't know.
+                    return 0;
+                }
             }
 
             unsafe
             {
                 byte* b = (byte*)(data.ToPointer());
-                for (int i = 0; i < blocksize; i++)
+                try
                 {
-                    // WriteByte may cause overhead but Marshal.Copy to use Write(byte[], int, int) is not good in case, either.
-                    // WriteByte method still uses FileStream's buffer, by the way.
-                    this.fs.WriteByte(b[i]);
+                    for (int i = 0; i < blocksize; i++)
+                    {
+                        // WriteByte may cause overhead but Marshal.Copy to use Write(byte[], int, int) is not good in case, either.
+                        // WriteByte method still uses FileStream's buffer, by the way.
+                        this.fs.WriteByte(b[i]);
+                    }
+                }
+                catch
+                {
+                    // Tell the native library to stop because we got an error here.
+                    // Either the file has been removed or the write permission has been cut off by someone (in case it's a network file)
+                    // Or locked by anti-virus or anything.
+                    return 0;
                 }
             }
 

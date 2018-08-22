@@ -7,8 +7,8 @@
     <ProjectGuid>{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>WebPWrapper</RootNamespace>
-    <AssemblyName>WebPWrapper</AssemblyName>
+    <RootNamespace>WebPWrapper.WPF</RootNamespace>
+    <AssemblyName>WebPWrapper.WPF</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>

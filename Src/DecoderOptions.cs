@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
     /// <summary>
     /// WebP Decoding options

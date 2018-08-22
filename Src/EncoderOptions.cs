@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
     public sealed class EncoderOptions
     {

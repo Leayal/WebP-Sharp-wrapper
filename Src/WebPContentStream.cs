@@ -1,8 +1,11 @@
 ﻿using System;
 using System.IO;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
+    /// <summary>
+    /// Dispose this stream ASAP when you don't use it anymore. Or wrap it within a using block.
+    /// </summary>
     public abstract class WebPContentStream : UnmanagedMemoryStream
     {
         protected bool __closed;

@@ -6,7 +6,7 @@ using System.Runtime.Remoting;
 using System.Text;
 using System.Threading;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
     class SimpleWebPContentStream : WebPContentStream
     {

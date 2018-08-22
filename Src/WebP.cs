@@ -28,7 +28,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
     public sealed class WebP : IDisposable
     {

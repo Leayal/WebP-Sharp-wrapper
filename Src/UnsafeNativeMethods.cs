@@ -4,7 +4,7 @@ using System.Security;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
     [SuppressUnmanagedCodeSecurityAttribute]
     internal sealed partial class UnsafeNativeMethods

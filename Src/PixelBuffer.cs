@@ -3,7 +3,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Media;
 using System.Runtime.InteropServices;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
     class PixelBuffer : IDisposable
     {

@@ -1,8 +1,10 @@
 ﻿using System;
-using System.IO;
 
-namespace WebPWrapper
+namespace WebPWrapper.WPF
 {
+    /// <summary>
+    /// Provides generic properties of an WebP Image.
+    /// </summary>
     public sealed class WebPImage : IDisposable
     {
         private readonly WebPContentStream _content;
@@ -39,8 +41,10 @@ namespace WebPWrapper
             this.header = new WebPHeader(ref config.input);
         }
 
-
-        public WebPHeader Header
+        /// <summary>
+        /// Get the image info
+        /// </summary>
+        public WebPHeader Info
         {
             get
             {
@@ -49,7 +53,9 @@ namespace WebPWrapper
             }
         }
 
-
+        /// <summary>
+        /// Get the stream which contains the WebP file
+        /// </summary>
         public WebPContentStream Content
         {
             get
@@ -61,6 +67,9 @@ namespace WebPWrapper
         }
 
         private bool _disposed;
+        /// <summary>
+        /// This will call Dispose() on <see cref="WebPContentStream"/> of this instance. Just the same as using <see cref="Content"/>.Dispose().
+        /// </summary>
         public void Dispose()
         {
             if (this._disposed) return;
