@@ -27,11 +27,32 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using WebPWrapper.WPF.Buffer;
 
 namespace WebPWrapper.WPF
 {
     public sealed class WebP : IDisposable
     {
+        internal readonly ChunkPool ManagedChunkPool;
+
+        public WebP() : this(4096) { }
+
+        /// <summary>
+        /// Create a new WebP instance with buffer pool size.
+        /// </summary>
+        /// <param name="bufferBlockSize">The size (in bytes) of each buffer block in the cache pool (for re-using buffer). Set to 0 to disable buffer pool. Size smaller than 1024 will be adjusted to 1024.</param>
+        public WebP(int bufferBlockSize)
+        {
+            if (bufferBlockSize < 0)
+                throw new ArgumentException("The size must be non-negative value.");
+            else if (bufferBlockSize == 0)
+                this.ManagedChunkPool = null;
+            else if (bufferBlockSize < 1024)
+                this.ManagedChunkPool = new ChunkPool(1024);
+            else
+                this.ManagedChunkPool = new ChunkPool(bufferBlockSize);
+        }
+
         #region | Public Decompress Functions |
         /// <summary>Read a WebP file</summary>
         /// <param name="pathFileName">WebP file to load</param>
@@ -124,6 +145,7 @@ namespace WebPWrapper.WPF
 
             try
             {
+                
                 WebPDecoderConfig config = new WebPDecoderConfig();
                 if (UnsafeNativeMethods.WebPInitDecoderConfig(ref config) == 0)
                 {
@@ -166,7 +188,6 @@ namespace WebPWrapper.WPF
                 config.options.use_scaling = options.use_scaling;
                 config.options.scaled_width = options.scaled_width;
                 config.options.scaled_height = options.scaled_height;
-                // config.options.use_threads = 1;
                 config.options.use_threads = options.use_threads;
                 config.options.dithering_strength = options.dithering_strength;
                 config.options.flip = options.flip;
@@ -177,14 +198,14 @@ namespace WebPWrapper.WPF
 
                 if (config.input.has_alpha == 0)
                 {
-                    config.output.colorspace = WEBP_CSP_MODE.MODE_BGR;
-                    bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgr24, null);
+                    config.output.colorspace = WEBP_CSP_MODE.MODE_BGRA;
+                    bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgr32, null);
                     bitmap.Lock();
                 }
                 else
                 {
                     config.output.colorspace = WEBP_CSP_MODE.MODE_bgrA;
-                    bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
+                    bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Pbgra32, null);
                     bitmap.Lock();
                 }
 
@@ -445,6 +466,8 @@ namespace WebPWrapper.WPF
                 //Free memory
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
+                if (wpic.argb != IntPtr.Zero)
+                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
             }
         }
 
@@ -500,6 +523,8 @@ namespace WebPWrapper.WPF
             {
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
+                if (wpic.argb != IntPtr.Zero)
+                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
             }
         }
 
@@ -559,6 +584,8 @@ namespace WebPWrapper.WPF
             {
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
+                if (wpic.argb != IntPtr.Zero)
+                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
             }
         }
 
@@ -641,15 +668,15 @@ namespace WebPWrapper.WPF
                 pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
-                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer();
+                WebPMemoryCopyBuffer webPMemoryBuffer = new WebPMemoryCopyBuffer(this.ManagedChunkPool, false);
                 Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
                 //compress the input samples
                 if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
                     throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
-
-                return new WebPImage(new AdvancedWebPContentStream(ref wpic, webPMemoryBuffer));
+                webPMemoryBuffer.ToReadOnly();
+                return new WebPImage(webPMemoryBuffer);
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossly (Advanced)"); }
             finally
@@ -657,10 +684,9 @@ namespace WebPWrapper.WPF
                 //Free memory
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
-                /*
+
                 if (wpic.argb != IntPtr.Zero)
                     UnsafeNativeMethods.WebPPictureFree(ref wpic);
-                */
             }
         }
 
@@ -738,21 +764,25 @@ namespace WebPWrapper.WPF
                 pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
-                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer();
+                WebPMemoryCopyBuffer webPMemoryBuffer = new WebPMemoryCopyBuffer(this.ManagedChunkPool, false);
                 Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
+                webPMemoryBuffer.ToReadOnly();
 
                 //compress the input samples
                 if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
                     throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
 
-                return new WebPImage(new AdvancedWebPContentStream(ref wpic, webPMemoryBuffer));
+                return new WebPImage(webPMemoryBuffer);
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossless"); }
             finally
             {
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
+
+                if (wpic.argb != IntPtr.Zero)
+                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
             }
         }
 
@@ -768,6 +798,7 @@ namespace WebPWrapper.WPF
 
             WebPPicture wpic = new WebPPicture();
             PixelBuffer pixelBuffer = null;
+
             try
             {
                 //test dll version
@@ -799,20 +830,24 @@ namespace WebPWrapper.WPF
                 pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
-                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer();
+                WebPMemoryCopyBuffer webPMemoryBuffer = new WebPMemoryCopyBuffer(this.ManagedChunkPool, false);
                 Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
+                webPMemoryBuffer.ToReadOnly();
                 //compress the input samples
                 if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
                     throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
 
-                return new WebPImage(new AdvancedWebPContentStream(ref wpic, webPMemoryBuffer));
+                return new WebPImage(webPMemoryBuffer);
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeNearLossless"); }
             finally
             {
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
+
+                if (wpic.argb != IntPtr.Zero)
+                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
             }
         }
 
@@ -826,6 +861,8 @@ namespace WebPWrapper.WPF
 
             WebPPicture wpic = new WebPPicture();
             PixelBuffer pixelBuffer = null;
+            bool isContiguousMemory = ((options.MemoryUsage & MemoryAllowance.ForcedContiguousMemory) == MemoryAllowance.ForcedContiguousMemory);
+
             try
             {
                 //Inicialize config struct
@@ -843,20 +880,23 @@ namespace WebPWrapper.WPF
                 pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
-                WebPMemoryBuffer webPMemoryBuffer = new WebPMemoryBuffer();
+                WebPMemoryCopyBuffer webPMemoryBuffer = new WebPMemoryCopyBuffer(this.ManagedChunkPool, isContiguousMemory);
                 Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
                 //compress the input samples
                 if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
                     throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
-
-                return new WebPImage(new AdvancedWebPContentStream(ref wpic, webPMemoryBuffer));
+                webPMemoryBuffer.ToReadOnly();
+                return new WebPImage(webPMemoryBuffer);
             }
-            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeNearLossless"); }
+            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.Encode"); }
             finally
             {
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
+
+                if (wpic.argb != IntPtr.Zero)
+                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
             }
         }
 
@@ -902,6 +942,8 @@ namespace WebPWrapper.WPF
             {
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
+                if (wpic.argb != IntPtr.Zero)
+                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
             }
         }
         #endregion
@@ -1103,9 +1145,14 @@ namespace WebPWrapper.WPF
 
         #region | Destruction |
         /// <summary>Free memory</summary>
+        private bool _disposed;
         public void Dispose()
         {
+            if (this._disposed) return;
+            this._disposed = true;
             GC.SuppressFinalize(this);
+
+            this.ManagedChunkPool.Dispose();
         }
         #endregion
     }

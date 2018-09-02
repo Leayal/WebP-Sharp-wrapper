@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using WebPWrapper.WPF.Buffer;
 
 namespace WebPWrapper.WPF
 {
@@ -24,85 +25,282 @@ namespace WebPWrapper.WPF
     }
     */
 
-    internal class WebPMemoryBuffer : IDisposable
+    internal abstract class WebPContentBuffer : Stream
     {
-        internal IntPtr allocPointer;
-        internal int capacity;
-        private int position;
+        internal virtual int MyWriter([InAttribute()] IntPtr data, UIntPtr data_size, ref WebPPicture picture)
+        {
+            return 0;
+        }
+    }
 
-        internal int MyWriter([InAttribute()] IntPtr data, UIntPtr data_size, ref WebPPicture picture)
+
+    class WebPMemoryCopyBuffer : WebPContentBuffer
+    {
+        private ChunkedBufferStream contentStream;
+        private ChunkPool pool;
+
+        public void ToReadOnly()
+        {
+            this.contentStream.Position = 0;
+            this.contentStream.SetReadOnlyCore(true);
+        }
+
+        internal override int MyWriter([InAttribute()] IntPtr data, UIntPtr data_size, ref WebPPicture picture)
         {
             int blocksize = (int)data_size;
-            // The first memory block that decoder push will be the webp file header (which contains the WebPContent size in bytes).
-            // Total of 12 bytes:
-            // 4: ASCII "RIFF"
-            // 4: WebP Content Size
-            // 4: ASCII "WEBP"
-            if (this.capacity == 0)
+
+            if (this.contentStream == null)
             {
-                // Get the WebPContent size in bytes
                 int contentSizeWithoutRIFFHeader = Marshal.ReadInt32(data, 4);
-                this.capacity = contentSizeWithoutRIFFHeader + 8; // Because the we got above is starting from offset 8 of the real file.
+                contentSizeWithoutRIFFHeader += 8; // Because the we got above is starting from offset 8 of the real file.
                 try
                 {
-                    this.allocPointer = Marshal.AllocHGlobal(this.capacity);
+                    ManagedMemoryChunk bigChunkIndeed = new ManagedMemoryChunk(contentSizeWithoutRIFFHeader);
+                    this.contentStream = new ChunkedBufferStream(this.pool, bigChunkIndeed, false);
                 }
                 catch
                 {
-                    // Not enough minera--memory.
+                    // Pre-allocate size on disk failed. Either not enough space or I don't know.
                     return 0;
                 }
             }
 
-            IntPtr newAdd = new IntPtr(allocPointer.ToInt32() + this.position);
-            this.position += blocksize;
-
             unsafe
             {
-                // Buffer.MemoryCopy only exists in .NET 4.6 and up
-                // Buffer.MemoryCopy(data.ToPointer(), newAdd.ToPointer(), blocksize, blocksize);
+                byte* b = (byte*)(data.ToPointer());
                 try
                 {
-                    UnsafeNativeMethods.MemoryCopy(newAdd.ToPointer(), data.ToPointer(), blocksize);
+                    for (int i = 0; i < blocksize; i++)
+                    {
+                        // May cause overhead
+                        this.contentStream.WriteByte(b[i]);
+                    }
                 }
                 catch
                 {
                     // In case someone freed the buffer in the memory while the memory copy is on going.
+                    // Or the memory cannot allocate more.
                     return 0;
                 }
             }
-            // Marshal.Copy(data, this.writer.data, this.writer.size, (int)data_size);
 
             return 1;
-        }
-
-        [Obsolete("While this should work, it will waste the memory as it allocate the size of raw pixel data. The newer one (lazily allocate) is better.", true)]
-        internal WebPMemoryBuffer(int length)
-        {
-            this.allocPointer = Marshal.AllocHGlobal(length);
-            this.capacity = length;
-            this.position = 0;
         }
 
         /// <summary>
         /// Lazily allocate the buffer according to the size.
         /// </summary>
-        internal WebPMemoryBuffer()
+        internal WebPMemoryCopyBuffer(ChunkPool chunkpool, bool isContiguousMemory)
         {
-            this.allocPointer = IntPtr.Zero;
-            this.capacity = 0;
-            this.position = 0;
+            this.pool = chunkpool;
+            if (!isContiguousMemory)
+                this.contentStream = new ChunkedBufferStream(chunkpool, false);
         }
 
         private bool _disposed;
-        public void Dispose()
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => this.contentStream.CanSeek;
+
+        public override bool CanWrite => false;
+
+        public override long Length => this.contentStream.Length;
+
+        public override long Position { get => this.contentStream.Position; set => this.contentStream.Position = value; }
+
+        protected override void Dispose(bool disposing)
         {
-            if (this._disposed) return;
-            this._disposed = true;
-            if (this.allocPointer != IntPtr.Zero)
+            try
             {
-                Marshal.FreeHGlobal(this.allocPointer);
-                this.allocPointer = IntPtr.Zero;
+                if (disposing)
+                {
+                    if (this._disposed) return;
+                    this._disposed = true;
+                    this.contentStream.Dispose();
+                    this.pool = null;
+                    this.contentStream = null;
+                }
+
+            }
+            finally
+            {
+                base.Dispose(disposing);
+            }
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return this.contentStream.Read(buffer, offset, count);
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override int ReadByte()
+        {
+            return this.contentStream.ReadByte();
+        }
+
+        public override void WriteByte(byte value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        {
+            return this.contentStream.BeginRead(buffer, offset, count, callback, state);
+        }
+
+        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override int EndRead(IAsyncResult asyncResult)
+        {
+            return this.contentStream.EndRead(asyncResult);
+        }
+
+        public override void EndWrite(IAsyncResult asyncResult)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void Flush() => this.contentStream.Flush();
+
+        public override long Seek(long offset, SeekOrigin origin) => this.contentStream.Seek(offset, origin);
+
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    /// <summary>
+    /// This one is totally busted. Failed
+    /// </summary>
+    class DiscardedWebPMemoryDirectBuffer : WebPContentBuffer
+    {
+        private UnmanagedChunkedBufferStream contentStream;
+        private UnmanagedMemoryChunk firstchunk;
+        private UnmanagedMemoryChunk currentchunk;
+        private WebPPicture wpic;
+
+        internal void Finish()
+        {
+            this.contentStream = new UnmanagedChunkedBufferStream(firstchunk);
+        }
+
+        internal override int MyWriter([InAttribute()] IntPtr data, UIntPtr data_size, ref WebPPicture picture)
+        {
+            int blocksize = (int)data_size;
+
+            if (firstchunk == null)
+            {
+                firstchunk = new UnmanagedMemoryChunk(data, blocksize);
+                currentchunk = firstchunk;
+            }
+            else
+            {
+                var newchunk = new UnmanagedMemoryChunk(data, blocksize);
+                currentchunk.Next = newchunk;
+                currentchunk = newchunk;
+            }
+
+            return 1;
+        }
+
+        internal DiscardedWebPMemoryDirectBuffer(ref WebPPicture pic)
+        {
+            this.contentStream = null;
+            this.wpic = pic;
+        }
+
+        public override bool CanRead => this.contentStream.CanRead;
+
+        public override bool CanSeek => this.contentStream.CanSeek;
+
+        public override bool CanWrite => false;
+
+        public override long Length => this.contentStream.Length;
+
+        public override long Position { get => this.contentStream.Position; set => this.contentStream.Position = value; }
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            return this.contentStream.Seek(offset, origin);
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return this.contentStream.Read(buffer, offset, count);
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override int ReadByte()
+        {
+            return this.contentStream.ReadByte();
+        }
+
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        {
+            return base.BeginRead(buffer, offset, count, callback, state);
+        }
+
+        public override int EndRead(IAsyncResult asyncResult)
+        {
+            return base.EndRead(asyncResult);
+        }
+
+        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void EndWrite(IAsyncResult asyncResult)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void WriteByte(byte value)
+        {
+            throw new NotSupportedException();
+        }
+
+        private bool _disposed;
+
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                if (disposing)
+                {
+                    if (this._disposed) return;
+                    this._disposed = true;
+
+                    if (wpic.argb != IntPtr.Zero)
+                        UnsafeNativeMethods.WebPPictureFree(ref wpic);
+                }
+            }
+            finally
+            {
+                base.Dispose(disposing);
             }
         }
     }
@@ -122,6 +320,13 @@ namespace WebPWrapper.WPF
             if (this._preallocateOnDisk)
             {
                 this._preallocateOnDisk = false;
+
+                // The first memory block that decoder push will be the webp file header (which contains the WebPContent size in bytes).
+                // Total of 12 bytes:
+                // 4: ASCII "RIFF"
+                // 4: WebP Content Size
+                // 4: ASCII "WEBP"
+
                 // Get the WebPContent size in bytes
                 int contentSizeWithoutRIFFHeader = Marshal.ReadInt32(data, 4);
                 contentSizeWithoutRIFFHeader += 8; // Because the we got above is starting from offset 8 of the real file.

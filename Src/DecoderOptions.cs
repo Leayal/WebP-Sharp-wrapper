@@ -91,7 +91,7 @@ namespace WebPWrapper.WPF
                 crop_top = this.crop.Y,
                 crop_width = this.crop.Width,
                 crop_height = this.crop.Height,
-                use_scaling = (((this.scaleWidth == 0) || (this.scaleHeight == 0)) ? 0 : 1),
+                use_scaling = (((this.scaleWidth == 0) && (this.scaleHeight == 0)) ? 0 : 1),
                 scaled_width = this.scaleWidth,
                 scaled_height = this.scaleHeight
             };

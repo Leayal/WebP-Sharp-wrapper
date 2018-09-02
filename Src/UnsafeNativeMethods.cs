@@ -9,6 +9,22 @@ namespace WebPWrapper.WPF
     [SuppressUnmanagedCodeSecurityAttribute]
     internal sealed partial class UnsafeNativeMethods
     {
+        internal unsafe static void Memcpy(byte[] dest, int destIndex, byte* src, int srcIndex, int len)
+        {
+            if ((srcIndex < 0) && (destIndex < 0) && (len < 0))
+                throw new InvalidOperationException("Index and length must be non-negative!");
+            if (dest.Length - destIndex < len)
+                throw new InvalidOperationException("not enough bytes in dest");
+            // If dest has 0 elements, the fixed statement will throw an 
+            // IndexOutOfRangeException.  Special-case 0-byte copies.
+            if (len == 0)
+                return;
+            fixed (byte* pDest = dest)
+            {
+                MemoryCopy(pDest + destIndex, src + srcIndex, len);
+            }
+        }
+
         public static unsafe void MemoryCopy(void* dest, void* src, int count)
         {
             int block;

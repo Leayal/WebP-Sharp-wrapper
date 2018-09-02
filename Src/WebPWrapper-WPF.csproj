@@ -46,7 +46,10 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AdvancedWebPContentStream.cs" />
+    <Compile Include="Buffer\ChunkedBufferStream.cs" />
+    <Compile Include="Buffer\ChunkPool.cs" />
+    <Compile Include="Buffer\MemoryChunk.cs" />
+    <Compile Include="Buffer\UnmanagedChunkedBufferStream.cs" />
     <Compile Include="DecoderOptions.cs" />
     <Compile Include="EncoderOptions.cs" />
     <Compile Include="Enums.cs" />

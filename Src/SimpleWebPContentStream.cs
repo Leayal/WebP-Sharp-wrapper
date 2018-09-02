@@ -12,7 +12,10 @@ namespace WebPWrapper.WPF
     {
         private IntPtr myPointer;
 
-        internal SimpleWebPContentStream(IntPtr memoryPointer, int length) : base(memoryPointer, length) { }
+        internal SimpleWebPContentStream(IntPtr memoryPointer, int length) : base(memoryPointer, length)
+        {
+            this.myPointer = memoryPointer;
+        }
 
         protected bool _closed;
         public override void Close()

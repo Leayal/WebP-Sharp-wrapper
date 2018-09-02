@@ -1,11 +1,24 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WebPWrapper.WPF
 {
+    [Flags]
+    public enum MemoryAllowance
+    {
+        /// <summary>
+        /// Allow the encoder use as much memory as possible.
+        /// </summary>
+        AsMuchAsPossible = 0,
+        /// <summary>
+        /// Tell the encoder to use as less memory as possible. May result in slower encode speed.
+        /// </summary>
+        LowMemoryCompressionMode = 1 << 0,
+        /// <summary>
+        /// If this flag is set, the encoder will try to allocate contiguous memory block and write the output to it. This flag DOES NOT affects "encode to file" methods.
+        /// It is not recommended but unless you really need it.
+        /// </summary>
+        ForcedContiguousMemory = 1 << 1
+    }
     public enum CompressionType
     {
         NearLossless,

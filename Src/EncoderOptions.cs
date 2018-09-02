@@ -78,8 +78,8 @@ namespace WebPWrapper.WPF
         public AlphaFiltering AlphaFiltering { get; set; } = AlphaFiltering.Fast;
         /// <summary>Gets or sets algorithm for encoding the alpha plane</summary>
         public AlphaCompressionType AlphaCompression { get; set; } = AlphaCompressionType.Lossless;
-        /// <summary>Gets or sets a value whether the encoder should reduce memory usage in exchange of CPU consumption</summary>
-        public bool LowMemoryUsage { get; set; } = false;
+        /// <summary>Gets or sets a value whether the encoder should reduce memory usage in exchange of CPU consumption (and compression speed).</summary>
+        public MemoryAllowance MemoryUsage { get; set; } = MemoryAllowance.AsMuchAsPossible;
         private CompressionType _compressionType;
         /// <summary>
         /// Gets compression algorithm that is used to initialize this instance
@@ -130,7 +130,7 @@ namespace WebPWrapper.WPF
             this.config.exact = (this.PreserveRGB ? 1 : 0);
             this.config.autofilter = (this.AutoFilter ? 1 : 0);
             this.config.thread_level = (this.UseMultithreading ? 1 : 0);
-            this.config.low_memory = (this.LowMemoryUsage ? 1 : 0);
+            this.config.low_memory = (((this.MemoryUsage & MemoryAllowance.LowMemoryCompressionMode) == MemoryAllowance.LowMemoryCompressionMode) ? 1 : 0);
             // May cause bug which switch to lossless if quality = 0 while selecting NearLossless
             this.config.near_lossless = ((this._compressionType == CompressionType.NearLossless) ? Convert.ToInt32(this._quality) : 0);
             this.config.lossless = ((this._compressionType == CompressionType.Lossless) ? 1 : 0);
