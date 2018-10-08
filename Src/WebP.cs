@@ -28,20 +28,44 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using WebPWrapper.WPF.Buffer;
+using WebPWrapper.WPF.Helper;
+using WebPWrapper.WPF.UnmanagedLibrary;
 
 namespace WebPWrapper.WPF
 {
     public sealed class WebP : IDisposable
     {
         internal readonly ChunkPool ManagedChunkPool;
+        internal readonly Libwebp library;
 
+        /// <summary>
+        /// Create a new WebP instance with default buffer pool size.
+        /// </summary>
+        /// <remarks>
+        /// For backward-compatible only
+        /// </remarks>
         public WebP() : this(4096) { }
 
         /// <summary>
-        /// Create a new WebP instance with buffer pool size.
+        /// Create a new WebP instance with given buffer pool size.
         /// </summary>
+        /// <remarks>
+        /// For backward-compatible only
+        /// </remarks>
+        public WebP(int bufferBlockSize) : this(RuntimeValue.StringDependsArchitecture("libwebp_x86.dll", "libwebp_x64.dll"), bufferBlockSize) { }
+
+        /// <summary>
+        /// Create a new WebP instance with default buffer pool size.
+        /// </summary>
+        /// <param name="library_path">The path to libwebp dll file</param>
+        public WebP(string library_path) : this(library_path, 4096) { }
+
+        /// <summary>
+        /// Create a new WebP instance with given buffer pool size.
+        /// </summary>
+        /// <param name="library_path">The path to libwebp dll file</param>
         /// <param name="bufferBlockSize">The size (in bytes) of each buffer block in the cache pool (for re-using buffer). Set to 0 to disable buffer pool. Size smaller than 1024 will be adjusted to 1024.</param>
-        public WebP(int bufferBlockSize)
+        public WebP(string library_path, int bufferBlockSize)
         {
             if (bufferBlockSize < 0)
                 throw new ArgumentException("The size must be non-negative value.");
@@ -51,6 +75,8 @@ namespace WebPWrapper.WPF
                 this.ManagedChunkPool = new ChunkPool(1024);
             else
                 this.ManagedChunkPool = new ChunkPool(bufferBlockSize);
+
+            this.library = Libwebp.Init(this, library_path);
         }
 
         #region | Public Decompress Functions |
@@ -72,25 +98,6 @@ namespace WebPWrapper.WPF
                         throw new FileFormatException("There is nothing to decode");
                     if (fs.Length > int.MaxValue)
                         throw new StackOverflowException();
-
-                    /*
-                    WebPIDecoder * const idec = WebPIDecode(NULL, NULL, &config);
-                    CHECK(idec != NULL);
-                    while (bytes_remaining > 0)
-                    {
-                        VP8StatusCode status = WebPIAppend(idec, input, bytes_read);
-                        if (status == VP8_STATUS_OK || status == VP8_STATUS_SUSPENDED)
-                        {
-                            bytes_remaining -= bytes_read;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    WebPIDelete(idec);
-                    */
-
 
                     int size = (int)fs.Length;
                     byte[] bytes = new byte[size];
@@ -147,12 +154,12 @@ namespace WebPWrapper.WPF
             {
                 
                 WebPDecoderConfig config = new WebPDecoderConfig();
-                if (UnsafeNativeMethods.WebPInitDecoderConfig(ref config) == 0)
+                if (this.library.WebPInitDecoderConfig(ref config) == 0)
                 {
                     throw new Exception("WebPInitDecoderConfig failed. Wrong version?");
                 }
 
-                result = UnsafeNativeMethods.WebPGetFeatures(memoryPointer, lengthToRead, ref config.input);
+                result = this.library.WebPGetFeatures(memoryPointer, lengthToRead, ref config.input);
                 if (result != VP8StatusCode.VP8_STATUS_OK)
                     throw new Exception("Failed WebPGetFeatures with error " + result);
 
@@ -217,7 +224,7 @@ namespace WebPWrapper.WPF
                 config.output.is_external_memory = 1;
 
                 // Decode
-                result = UnsafeNativeMethods.WebPDecode(memoryPointer, lengthToRead, ref config);
+                result = this.library.WebPDecode(memoryPointer, lengthToRead, ref config);
                 if (result != VP8StatusCode.VP8_STATUS_OK)
                 {
                     bitmap.Unlock();
@@ -229,7 +236,7 @@ namespace WebPWrapper.WPF
                     bitmap.Unlock();
                 }
 
-                UnsafeNativeMethods.WebPFreeDecBuffer(ref config.output);
+                this.library.WebPFreeDecBuffer(ref config.output);
 
                 return bitmap;
             }
@@ -272,7 +279,7 @@ namespace WebPWrapper.WPF
             try
             {
                 WebPDecoderConfig config = new WebPDecoderConfig();
-                if (UnsafeNativeMethods.WebPInitDecoderConfig(ref config) == 0)
+                if (this.library.WebPInitDecoderConfig(ref config) == 0)
                     throw new Exception("WebPInitDecoderConfig failed. Wrong version?");
 
                 // Set up decode options
@@ -301,13 +308,13 @@ namespace WebPWrapper.WPF
                 config.output.is_external_memory = 1;
 
                 // Decode
-                VP8StatusCode result = UnsafeNativeMethods.WebPDecode(memoryPointer, length, ref config);
+                VP8StatusCode result = this.library.WebPDecode(memoryPointer, length, ref config);
                 if (result != VP8StatusCode.VP8_STATUS_OK)
                     throw new Exception("Failed WebPDecode with error " + result);
 
                 BitmapSource bmp = CachedBitmap.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, outputPointer, outputsize, _stride);
 
-                UnsafeNativeMethods.WebPFreeDecBuffer(ref config.output);
+                this.library.WebPFreeDecBuffer(ref config.output);
 
                 return bmp;
             }
@@ -352,7 +359,7 @@ namespace WebPWrapper.WPF
             try
             {
                 WebPDecoderConfig config = new WebPDecoderConfig();
-                if (UnsafeNativeMethods.WebPInitDecoderConfig(ref config) == 0)
+                if (this.library.WebPInitDecoderConfig(ref config) == 0)
                     throw new Exception("WebPInitDecoderConfig failed. Wrong version?");
 
                 // Set up decode options
@@ -380,13 +387,13 @@ namespace WebPWrapper.WPF
                 config.output.is_external_memory = 1;
 
                 // Decode
-                VP8StatusCode result = UnsafeNativeMethods.WebPDecode(memoryPointer, length, ref config);
+                VP8StatusCode result = this.library.WebPDecode(memoryPointer, length, ref config);
                 if (result != VP8StatusCode.VP8_STATUS_OK)
                     throw new Exception("Failed WebPDecode with error " + result);
 
                 BitmapSource bmp = CachedBitmap.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, outputPointer, outputsize, _stride);
 
-                UnsafeNativeMethods.WebPFreeDecBuffer(ref config.output);
+                this.library.WebPFreeDecBuffer(ref config.output);
 
                 return bmp;
             }
@@ -404,7 +411,7 @@ namespace WebPWrapper.WPF
         /// <param name="bmp">Bitmap with the WebP image</param>
         /// <param name="pathFileName">The file to write</param>
         /// <param name="quality">Between 0 (lower quality, lowest file size) and 100 (highest quality, higher file size)</param>
-        public void EncodeLossyToFile(BitmapSource bmp, string pathFileName, int quality = 75, int speed = 6, WebPPreset preset = WebPPreset.WEBP_PRESET_DEFAULT)
+        public void EncodeLossyToFile(BitmapSource bmp, string pathFileName, int quality = 75, int speed = 6, WebPPreset preset = WebPPreset.Default)
         {
             if (bmp.PixelWidth == 0 || bmp.PixelHeight == 0)
                 throw new ArgumentException("Bitmap contains no data.", "bmp");
@@ -418,7 +425,7 @@ namespace WebPWrapper.WPF
                 WebPConfig config = new WebPConfig();
 
                 //Set compresion parameters
-                if (UnsafeNativeMethods.WebPConfigInit(ref config, preset, quality) == 0)
+                if (this.library.WebPConfigInit(ref config, preset, quality) == 0)
                     throw new Exception("Can´t config preset");
 
                 // Add additional tuning:
@@ -434,29 +441,29 @@ namespace WebPWrapper.WPF
                 config.segments = 4;
                 config.partitions = 3;
                 config.thread_level = 1;
-                if (UnsafeNativeMethods.WebPGetDecoderVersion() > 1082)     //Old version don´t suport preprocessing 4
+                if (this.library.WebPGetDecoderVersion() > 1082)     //Old version don´t suport preprocessing 4
                     config.preprocessing = 4;
                 else
                     config.preprocessing = 3;
 
                 //Validate the config
-                if (UnsafeNativeMethods.WebPValidateConfig(ref config) != 1)
+                if (this.library.WebPValidateConfig(ref config) != 1)
                     throw new Exception("Bad config parameters");
 
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpic) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpic) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
 
                 //Put the bitmap componets in wpic
-                pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
+                pixelBuffer = WebPPictureImportAuto(bmp, ref wpic);
 
                 // Use buffering enqueue (I don't know why but it won't work without enqueue) to write the byte[] chunks to disk.
                 using (WebPFileWriter webPMemoryBuffer = new WebPFileWriter(pathFileName))
                 {
-                    Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyFileWriter);
+                    Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyFileWriter);
                     wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
                     //compress the input samples
-                    if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
+                    if (this.library.WebPEncode(ref config, ref wpic) != 1)
                         throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
                 }
             }
@@ -467,11 +474,11 @@ namespace WebPWrapper.WPF
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
                 if (wpic.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
+                    this.library.WebPPictureFree(ref wpic);
             }
         }
 
-        public void EncodeNearLosslessToFile(BitmapSource bmp, string pathFileName, int quality = 100, int speed = 9, WebPPreset preset = WebPPreset.WEBP_PRESET_DEFAULT)
+        public void EncodeNearLosslessToFile(BitmapSource bmp, string pathFileName, int quality = 100, int speed = 9, WebPPreset preset = WebPPreset.Default)
         {
             if (bmp.PixelWidth == 0 || bmp.PixelHeight == 0)
                 throw new ArgumentException("Bitmap contains no data.", "bmp");
@@ -481,40 +488,40 @@ namespace WebPWrapper.WPF
             try
             {
                 //test dll version
-                if (UnsafeNativeMethods.WebPGetDecoderVersion() <= 1082)
+                if (this.library.WebPGetDecoderVersion() <= 1082)
                     throw new Exception("This dll version not suport EncodeNearLossless");
 
                 //Inicialize config struct
                 WebPConfig config = new WebPConfig();
 
                 //Set compresion parameters
-                if (UnsafeNativeMethods.WebPConfigInit(ref config, preset, quality) == 0)
+                if (this.library.WebPConfigInit(ref config, preset, quality) == 0)
                     throw new Exception("Can´t config preset");
-                if (UnsafeNativeMethods.WebPConfigLosslessPreset(ref config, speed) == 0)
+                if (this.library.WebPConfigLosslessPreset(ref config, speed) == 0)
                     throw new Exception("Can´t config lossless preset");
                 config.thread_level = 1;
                 config.pass = speed + 1;
                 config.near_lossless = quality;
 
                 //Validate the config
-                if (UnsafeNativeMethods.WebPValidateConfig(ref config) != 1)
+                if (this.library.WebPValidateConfig(ref config) != 1)
                     throw new Exception("Bad config parameters");
 
                 // Setup the input data, allocating the bitmap, width and height
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpic) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpic) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
 
                 //Put the bitmap componets in wpic
-                pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
+                pixelBuffer = WebPPictureImportAuto(bmp, ref wpic);
 
                 // Use buffering enqueue (I don't know why but it won't work without enqueue) to write the byte[] chunks to disk.
                 using (WebPFileWriter webPMemoryBuffer = new WebPFileWriter(pathFileName))
                 {
-                    Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyFileWriter);
+                    Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyFileWriter);
                     wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
                     //compress the input samples
-                    if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
+                    if (this.library.WebPEncode(ref config, ref wpic) != 1)
                         throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
                 }
             }
@@ -524,11 +531,11 @@ namespace WebPWrapper.WPF
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
                 if (wpic.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
+                    this.library.WebPPictureFree(ref wpic);
             }
         }
 
-        public void EncodeLosslessToFile(BitmapSource bmp, string pathFileName, int quality = 75, int speed = 6, WebPPreset preset = WebPPreset.WEBP_PRESET_DEFAULT)
+        public void EncodeLosslessToFile(BitmapSource bmp, string pathFileName, int quality = 75, int speed = 6, WebPPreset preset = WebPPreset.Default)
         {
             if (bmp.PixelWidth == 0 || bmp.PixelHeight == 0)
                 throw new ArgumentException("Bitmap contains no data.", "bmp");
@@ -542,13 +549,13 @@ namespace WebPWrapper.WPF
                 WebPConfig config = new WebPConfig();
 
                 //Set compresion parameters
-                if (UnsafeNativeMethods.WebPConfigInit(ref config, preset, quality) == 0)
+                if (this.library.WebPConfigInit(ref config, preset, quality) == 0)
                     throw new Exception("Can´t config preset");
 
                 //Old version of dll not suport info and WebPConfigLosslessPreset
-                if (UnsafeNativeMethods.WebPGetDecoderVersion() > 1082)
+                if (this.library.WebPGetDecoderVersion() > 1082)
                 {
-                    if (UnsafeNativeMethods.WebPConfigLosslessPreset(ref config, speed) == 0)
+                    if (this.library.WebPConfigLosslessPreset(ref config, speed) == 0)
                         throw new Exception("Can´t config lossless preset");
                 }
 
@@ -557,25 +564,25 @@ namespace WebPWrapper.WPF
                 //config.image_hint = WebPImageHint.WEBP_HINT_PICTURE;
 
                 //Validate the config
-                if (UnsafeNativeMethods.WebPValidateConfig(ref config) != 1)
+                if (this.library.WebPValidateConfig(ref config) != 1)
                     throw new Exception("Bad config parameters");
 
                 // Setup the input data, allocating a the bitmap, width and height
 
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpic) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpic) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
 
                 //Put the bitmap componets in wpic
-                pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
+                pixelBuffer = WebPPictureImportAuto(bmp, ref wpic);
 
                 // Use buffering enqueue (I don't know why but it won't work without enqueue) to write the byte[] chunks to disk.
                 using (WebPFileWriter webPMemoryBuffer = new WebPFileWriter(pathFileName))
                 {
-                    Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyFileWriter);
+                    Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyFileWriter);
                     wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
                     //compress the input samples
-                    if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
+                    if (this.library.WebPEncode(ref config, ref wpic) != 1)
                         throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
                 }
             }
@@ -585,7 +592,7 @@ namespace WebPWrapper.WPF
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
                 if (wpic.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
+                    this.library.WebPPictureFree(ref wpic);
             }
         }
 
@@ -602,16 +609,19 @@ namespace WebPWrapper.WPF
 
             try
             {
-                int size = UnsafeNativeMethods.WebPEncodeSimple(bmp, quality, out unmanagedData);
+                int size = this.WebPEncodeSimple(bmp, quality, out unmanagedData);
                 if (size == 0)
                     throw new Exception("Can´t encode WebP");
 
-                return new WebPImage(new SimpleWebPContentStream(unmanagedData, size));
+                return new WebPImage(this.library, new SimpleWebPContentStream(unmanagedData, size));
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossly"); }
             finally
             {
-
+                if (unmanagedData != IntPtr.Zero)
+                {
+                    this.library.WebPFree(unmanagedData);
+                }
             }
         }
 
@@ -620,7 +630,7 @@ namespace WebPWrapper.WPF
         /// <param name="quality">Between 0 (lower quality, lowest file size) and 100 (highest quality, higher file size)</param>
         /// <param name="speed">Between 0 (fastest, lowest compression) and 9 (slower, best compression)</param>
         /// <returns>Compressed data</returns>
-        public WebPImage EncodeLossy(BitmapSource bmp, int quality, int speed, WebPPreset preset = WebPPreset.WEBP_PRESET_DEFAULT)
+        public WebPImage EncodeLossy(BitmapSource bmp, int quality, int speed, WebPPreset preset = WebPPreset.Default)
         {
             if (bmp.PixelWidth == 0 || bmp.PixelHeight == 0)
                 throw new ArgumentException("Bitmap contains no data.", "bmp");
@@ -634,7 +644,7 @@ namespace WebPWrapper.WPF
                 WebPConfig config = new WebPConfig();
 
                 //Set compresion parameters
-                if (UnsafeNativeMethods.WebPConfigInit(ref config, preset, quality) == 0)
+                if (this.library.WebPConfigInit(ref config, preset, quality) == 0)
                     throw new Exception("Can´t config preset");
 
                 // Add additional tuning:
@@ -650,33 +660,33 @@ namespace WebPWrapper.WPF
                 config.segments = 4;
                 config.partitions = 3;
                 config.thread_level = 1;
-                if (UnsafeNativeMethods.WebPGetDecoderVersion() > 1082)     //Old version don´t suport preprocessing 4
+                if (this.library.WebPGetDecoderVersion() > 1082)     //Old version don´t suport preprocessing 4
                     config.preprocessing = 4;
                 else
                     config.preprocessing = 3;
 
                 //Validate the config
-                if (UnsafeNativeMethods.WebPValidateConfig(ref config) != 1)
+                if (this.library.WebPValidateConfig(ref config) != 1)
                     throw new Exception("Bad config parameters");
 
                 // Setup the input data, allocating the bitmap, width and height
 
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpic) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpic) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
 
                 //Put the bitmap componets in wpic
-                pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
+                pixelBuffer = WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
                 WebPMemoryCopyBuffer webPMemoryBuffer = new WebPMemoryCopyBuffer(this.ManagedChunkPool, false);
-                Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
+                Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
                 //compress the input samples
-                if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
+                if (this.library.WebPEncode(ref config, ref wpic) != 1)
                     throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
                 webPMemoryBuffer.ToReadOnly();
-                return new WebPImage(webPMemoryBuffer);
+                return new WebPImage(this.library, webPMemoryBuffer);
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossly (Advanced)"); }
             finally
@@ -686,7 +696,7 @@ namespace WebPWrapper.WPF
                     pixelBuffer.Dispose();
 
                 if (wpic.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
+                    this.library.WebPPictureFree(ref wpic);
             }
         }
 
@@ -702,20 +712,17 @@ namespace WebPWrapper.WPF
 
             try
             {
-                int size = UnsafeNativeMethods.WebPEncodeLosslessSimple(bmp, out unmanagedData);
+                int size = this.WebPEncodeLosslessSimple(bmp, out unmanagedData);
                 if (size == 0)
                     throw new Exception("Can´t encode WebP");
 
-                return new WebPImage(new SimpleWebPContentStream(unmanagedData, size));
+                return new WebPImage(this.library, new SimpleWebPContentStream(unmanagedData, size));
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossless (Simple)"); }
             finally
             {
-                //Free memory
-                /*
                 if (unmanagedData != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPFree(unmanagedData);
-                */
+                    this.library.WebPFree(unmanagedData);
             }
         }
 
@@ -723,7 +730,7 @@ namespace WebPWrapper.WPF
         /// <param name="bmp">Bitmap with the image</param>
         /// <param name="speed">Between 0 (fastest, lowest compression) and 9 (slower, best compression)</param>
         /// <returns>Compressed data</returns>
-        public WebPImage EncodeLossless(BitmapSource bmp, int quality, int speed, WebPPreset webPPreset = WebPPreset.WEBP_PRESET_DEFAULT)
+        public WebPImage EncodeLossless(BitmapSource bmp, int quality, int speed, WebPPreset webPPreset = WebPPreset.Default)
         {
             if (bmp.PixelWidth == 0 || bmp.PixelHeight == 0)
                 throw new ArgumentException("Bitmap contains no data.", "bmp");
@@ -737,13 +744,13 @@ namespace WebPWrapper.WPF
                 WebPConfig config = new WebPConfig();
 
                 //Set compresion parameters
-                if (UnsafeNativeMethods.WebPConfigInit(ref config, webPPreset, quality) == 0)
+                if (this.library.WebPConfigInit(ref config, webPPreset, quality) == 0)
                     throw new Exception("Can´t config preset");
 
                 //Old version of dll not suport info and WebPConfigLosslessPreset
-                if (UnsafeNativeMethods.WebPGetDecoderVersion() > 1082)
+                if (this.library.WebPGetDecoderVersion() > 1082)
                 {
-                    if (UnsafeNativeMethods.WebPConfigLosslessPreset(ref config, speed) == 0)
+                    if (this.library.WebPConfigLosslessPreset(ref config, speed) == 0)
                         throw new Exception("Can´t config lossless preset");
                 }
 
@@ -752,28 +759,28 @@ namespace WebPWrapper.WPF
                 //config.image_hint = WebPImageHint.WEBP_HINT_PICTURE;
 
                 //Validate the config
-                if (UnsafeNativeMethods.WebPValidateConfig(ref config) != 1)
+                if (this.library.WebPValidateConfig(ref config) != 1)
                     throw new Exception("Bad config parameters");
 
                 // Setup the input data, allocating a the bitmap, width and height
 
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpic) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpic) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
 
                 //Put the bitmap componets in wpic
-                pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
+                pixelBuffer = WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
                 WebPMemoryCopyBuffer webPMemoryBuffer = new WebPMemoryCopyBuffer(this.ManagedChunkPool, false);
-                Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
+                Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
                 webPMemoryBuffer.ToReadOnly();
 
                 //compress the input samples
-                if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
+                if (this.library.WebPEncode(ref config, ref wpic) != 1)
                     throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
 
-                return new WebPImage(webPMemoryBuffer);
+                return new WebPImage(this.library, webPMemoryBuffer);
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossless"); }
             finally
@@ -782,7 +789,7 @@ namespace WebPWrapper.WPF
                     pixelBuffer.Dispose();
 
                 if (wpic.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
+                    this.library.WebPPictureFree(ref wpic);
             }
         }
 
@@ -791,7 +798,7 @@ namespace WebPWrapper.WPF
         /// <param name="quality">Between 0 (lower quality, lowest file size) and 100 (highest quality, higher file size)</param>
         /// <param name="speed">Between 0 (fastest, lowest compression) and 9 (slower, best compression)</param>
         /// <returns>Compress data</returns>
-        public WebPImage EncodeNearLossless(BitmapSource bmp, int quality, int speed = 9, WebPPreset preset = WebPPreset.WEBP_PRESET_DEFAULT)
+        public WebPImage EncodeNearLossless(BitmapSource bmp, int quality, int speed = 9, WebPPreset preset = WebPPreset.Default)
         {
             if (bmp.PixelWidth == 0 || bmp.PixelHeight == 0)
                 throw new ArgumentException("Bitmap contains no data.", "bmp");
@@ -802,16 +809,16 @@ namespace WebPWrapper.WPF
             try
             {
                 //test dll version
-                if (UnsafeNativeMethods.WebPGetDecoderVersion() <= 1082)
+                if (this.library.WebPGetDecoderVersion() <= 1082)
                     throw new Exception("This dll version not suport EncodeNearLossless");
 
                 //Inicialize config struct
                 WebPConfig config = new WebPConfig();
 
                 //Set compresion parameters
-                if (UnsafeNativeMethods.WebPConfigInit(ref config, preset, quality) == 0)
+                if (this.library.WebPConfigInit(ref config, preset, quality) == 0)
                     throw new Exception("Can´t config preset");
-                if (UnsafeNativeMethods.WebPConfigLosslessPreset(ref config, speed) == 0)
+                if (this.library.WebPConfigLosslessPreset(ref config, speed) == 0)
                     throw new Exception("Can´t config lossless preset");
 
                 config.thread_level = 1;
@@ -819,26 +826,26 @@ namespace WebPWrapper.WPF
                 config.near_lossless = quality;
 
                 //Validate the config
-                if (UnsafeNativeMethods.WebPValidateConfig(ref config) != 1)
+                if (this.library.WebPValidateConfig(ref config) != 1)
                     throw new Exception("Bad config parameters");
 
                 // Setup the input data, allocating the bitmap, width and height
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpic) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpic) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
 
                 //Put the bitmap componets in wpic
-                pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
+                pixelBuffer = WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
                 WebPMemoryCopyBuffer webPMemoryBuffer = new WebPMemoryCopyBuffer(this.ManagedChunkPool, false);
-                Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
+                Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
                 webPMemoryBuffer.ToReadOnly();
                 //compress the input samples
-                if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
+                if (this.library.WebPEncode(ref config, ref wpic) != 1)
                     throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
 
-                return new WebPImage(webPMemoryBuffer);
+                return new WebPImage(this.library, webPMemoryBuffer);
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeNearLossless"); }
             finally
@@ -847,7 +854,7 @@ namespace WebPWrapper.WPF
                     pixelBuffer.Dispose();
 
                 if (wpic.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
+                    this.library.WebPPictureFree(ref wpic);
             }
         }
 
@@ -866,28 +873,29 @@ namespace WebPWrapper.WPF
             try
             {
                 //Inicialize config struct
-                WebPConfig config = options.GetConfigStruct();
+                WebPConfig config = new WebPConfig();
+                options.ApplyConfigStruct(this.library, ref config);
 
                 //Validate the config
-                if (UnsafeNativeMethods.WebPValidateConfig(ref config) != 1)
+                if (this.library.WebPValidateConfig(ref config) != 1)
                     throw new Exception("Bad config parameters");
 
                 // Setup the input data, allocating the bitmap, width and height
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpic) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpic) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
 
                 //Put the bitmap componets in wpic
-                pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
+                pixelBuffer = WebPPictureImportAuto(bmp, ref wpic);
 
                 // Set up a byte-writing method (write-to-memory, in this case)
                 WebPMemoryCopyBuffer webPMemoryBuffer = new WebPMemoryCopyBuffer(this.ManagedChunkPool, isContiguousMemory);
-                Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyWriter);
+                Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyWriter);
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
                 //compress the input samples
-                if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
+                if (this.library.WebPEncode(ref config, ref wpic) != 1)
                     throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
                 webPMemoryBuffer.ToReadOnly();
-                return new WebPImage(webPMemoryBuffer);
+                return new WebPImage(this.library, webPMemoryBuffer);
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.Encode"); }
             finally
@@ -896,7 +904,7 @@ namespace WebPWrapper.WPF
                     pixelBuffer.Dispose();
 
                 if (wpic.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
+                    this.library.WebPPictureFree(ref wpic);
             }
         }
 
@@ -914,26 +922,27 @@ namespace WebPWrapper.WPF
             try
             {
                 //Inicialize config struct
-                WebPConfig config = options.GetConfigStruct();
+                WebPConfig config = new WebPConfig();
+                options.ApplyConfigStruct(this.library, ref config);
 
                 //Validate the config
-                if (UnsafeNativeMethods.WebPValidateConfig(ref config) != 1)
+                if (this.library.WebPValidateConfig(ref config) != 1)
                     throw new Exception("Bad config parameters");
 
                 // Setup the input data, allocating the bitmap, width and height
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpic) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpic) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
 
                 //Put the bitmap componets in wpic
-                pixelBuffer = UnsafeNativeMethods.WebPPictureImportAuto(bmp, ref wpic);
+                pixelBuffer = WebPPictureImportAuto(bmp, ref wpic);
 
                 using (WebPFileWriter webPMemoryBuffer = new WebPFileWriter(pathFileName))
                 {
-                    Delegate somedeed = new UnsafeNativeMethods.WebPMemoryWrite(webPMemoryBuffer.MyFileWriter);
+                    Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyFileWriter);
                     wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
                     //compress the input samples
-                    if (UnsafeNativeMethods.WebPEncode(ref config, ref wpic) != 1)
+                    if (this.library.WebPEncode(ref config, ref wpic) != 1)
                         throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
                 }
             }
@@ -943,57 +952,264 @@ namespace WebPWrapper.WPF
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
                 if (wpic.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpic);
+                    this.library.WebPPictureFree(ref wpic);
             }
+        }
+        #endregion
+
+        #region Private Functions
+        private PixelBuffer WebPPictureImportAuto(BitmapSource bmp, ref WebPPicture wpic)
+        {
+            PixelBuffer pixelBuffer;
+
+            wpic.width = bmp.PixelWidth;
+            wpic.height = bmp.PixelHeight;
+            wpic.use_argb = 1;
+
+            /*
+            Compare GUID of pixel formats.
+            According to .NET's source code: https://referencesource.microsoft.com/#PresentationCore/Core/CSharp/System/Windows/Media/PixelFormat.cs,465
+            `==` and PixelFormat.Equals(PixelFormat) do the same. Use `==` should be easier to look.
+            */
+            if (bmp.Format == PixelFormats.Bgr24)
+            {
+                pixelBuffer = new PixelBuffer(bmp);
+                if (this.library.WebPPictureImportBGR(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
+                    throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGR");
+            }
+            else if (bmp.Format == PixelFormats.Bgr32)
+            {
+                pixelBuffer = new PixelBuffer(bmp);
+                if (this.library.WebPPictureImportBGRX(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
+                    throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGR");
+            }
+            else if (bmp.Format == PixelFormats.Bgra32)
+            {
+                pixelBuffer = new PixelBuffer(bmp);
+                if (this.library.WebPPictureImportBGRA(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
+                    throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGRA");
+            }
+            else if (bmp.Format == PixelFormats.Pbgra32)
+            {
+                pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32);
+                if (this.library.WebPPictureImportBGRA(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
+                    throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGRA");
+            }
+            else if (bmp.Format == PixelFormats.Rgb24)
+            {
+                pixelBuffer = new PixelBuffer(bmp);
+                if (this.library.WebPPictureImportRGB(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
+                    throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportRGB");
+            }
+            else if (bmp.Format == PixelFormats.Indexed8)
+            {
+                pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32);
+                if (this.library.WebPPictureImportBGRA(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
+                    throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGRA");
+            }
+            else
+            {
+                if (bmp.Format.BitsPerPixel == 24)
+                {
+                    pixelBuffer = new PixelBuffer(bmp);
+                    if (this.library.WebPPictureImportBGR(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
+                        throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGR");
+                }
+                else if (bmp.Format.BitsPerPixel == 32)
+                {
+                    pixelBuffer = new PixelBuffer(bmp);
+                    if (this.library.WebPPictureImportBGRA(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
+                        throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGRA");
+                }
+                else
+                {
+                    throw new NotSupportedException("Image format not supported.");
+                }
+            }
+            return pixelBuffer;
+        }
+
+        private int WebPPictureImportAuto(PixelFormat pixelFormat, ref WebPPicture wpic, IntPtr buffer, int stride)
+        {
+            if (pixelFormat == PixelFormats.Bgr24)
+                return this.library.WebPPictureImportBGR(ref wpic, buffer, stride);
+            else if (pixelFormat == PixelFormats.Bgr32)
+                return this.library.WebPPictureImportBGRX(ref wpic, buffer, stride);
+            else if (pixelFormat == PixelFormats.Bgra32)
+                return this.library.WebPPictureImportBGRA(ref wpic, buffer, stride);
+            else if (pixelFormat == PixelFormats.Pbgra32)
+                return this.library.WebPPictureImportBGRA(ref wpic, buffer, stride);
+            else if (pixelFormat == PixelFormats.Rgb24)
+                return this.library.WebPPictureImportRGB(ref wpic, buffer, stride);
+            else if (pixelFormat == PixelFormats.Indexed8)
+                return this.library.WebPPictureImportBGRA(ref wpic, buffer, stride);
+            else
+            {
+                if (pixelFormat.BitsPerPixel == 24)
+                    return this.library.WebPPictureImportBGR(ref wpic, buffer, stride);
+                else if (pixelFormat.BitsPerPixel == 32)
+                    return this.library.WebPPictureImportBGRA(ref wpic, buffer, stride);
+                else
+                    throw new NotSupportedException("Image format not supported.");
+            }
+        }
+
+        private int WebPEncodeSimple(BitmapSource bmp, float quality, out IntPtr output)
+        {
+            int size = 0;
+            if (bmp.Format == PixelFormats.Bgr24)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp))
+                    size = this.library.WebPEncodeBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
+            }
+            else if (bmp.Format == PixelFormats.Bgr32)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgr24))
+                    size = this.library.WebPEncodeBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
+            }
+            else if (bmp.Format == PixelFormats.Bgra32)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp))
+                    size = this.library.WebPEncodeBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
+            }
+            else if (bmp.Format == PixelFormats.Pbgra32)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
+                    size = this.library.WebPEncodeBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
+            }
+            else if (bmp.Format == PixelFormats.Rgb24)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp))
+                    size = this.library.WebPEncodeRGB(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
+            }
+            else if (bmp.Format == PixelFormats.Indexed8)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
+                    size = this.library.WebPEncodeBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
+            }
+            else
+            {
+                if (bmp.Format.BitsPerPixel == 24)
+                {
+                    using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgr24))
+                        size = this.library.WebPEncodeBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
+                }
+                else if (bmp.Format.BitsPerPixel == 32)
+                {
+                    using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
+                        size = this.library.WebPEncodeBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
+                }
+                else
+                {
+                    throw new NotSupportedException("Image format not supported.");
+                }
+            }
+            return size;
+        }
+
+        private int WebPEncodeLosslessSimple(BitmapSource bmp, out IntPtr output)
+        {
+            int size = 0;
+            if (bmp.Format == PixelFormats.Bgr24)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp))
+                    size = this.library.WebPEncodeLosslessBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
+            }
+            else if (bmp.Format == PixelFormats.Bgr32)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgr24))
+                    size = this.library.WebPEncodeLosslessBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
+            }
+            else if (bmp.Format == PixelFormats.Bgra32)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp))
+                    size = this.library.WebPEncodeLosslessBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
+            }
+            else if (bmp.Format == PixelFormats.Pbgra32)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
+                    size = this.library.WebPEncodeLosslessBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
+            }
+            else if (bmp.Format == PixelFormats.Rgb24)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp))
+                    size = this.library.WebPEncodeLosslessRGB(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
+            }
+            else if (bmp.Format == PixelFormats.Indexed8)
+            {
+                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
+                    size = this.library.WebPEncodeLosslessBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
+            }
+            else
+            {
+                if (bmp.Format.BitsPerPixel == 24)
+                {
+                    using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgr24))
+                        size = this.library.WebPEncodeLosslessBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
+                }
+                else if (bmp.Format.BitsPerPixel == 32)
+                {
+                    using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
+                        size = this.library.WebPEncodeLosslessBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
+                }
+                else
+                {
+                    throw new NotSupportedException("Image format not supported.");
+                }
+            }
+            return size;
         }
         #endregion
 
         #region | Another Public Functions |
         /// <summary>Get the libwebp version</summary>
         /// <returns>Version of library</returns>
-        public static string GetVersion()
+        public Version GetVersion()
         {
             try
             {
-                uint v = (uint)UnsafeNativeMethods.WebPGetDecoderVersion();
+                int v = this.library.WebPGetDecoderVersion();
                 var revision = v % 256;
                 var minor = (v >> 8) % 256;
                 var major = (v >> 16) % 256;
-                return major + "." + minor + "." + revision;
+                return new Version((int)major, (int)minor, (int)revision, 0);
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.GetVersion"); }
         }
 
+        /// <summary>
+        /// Provide low-level access to unmanaged code. USE IT AT YOUR OWN RISK.
+        /// </summary>
+        /// <returns></returns>
+        public ILibwebp GetDirectAccessToLibrary()
+        {
+            return this.library;
+        }
+
+        /// <summary>
+        /// Verify the file header to see if the file really contains a WebP image.
+        /// </summary>
+        /// <param name="filepath">Path to the file to check</param>
+        /// <returns>A boolean determine whether if the file is a WebP image or not</returns>
         public static bool IsWebP(string filepath)
         {
             using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read, FileShare.Read, 8))
-            {
-                byte[] buffer = new byte[12];
-                // Read the 12 bytes:
-                // 4: ASCII "RIFF"
-                // 4: Image size in byte
-                // 4: ASCII "RIFF"
-                try
-                {
-                    int read = fs.Read(buffer, 0, buffer.Length);
-                    if (read == 12)
-                    {
-                        if (System.Text.Encoding.ASCII.GetString(buffer, 0, 4) == "RIFF")
-                            if (System.Text.Encoding.ASCII.GetString(buffer, 8, 4) == "WEBP")
-                                return true;
-                    }
-                }
-                finally
-                {
-                    buffer = null;
-                }
-                return false;
-            }
+                return IsWebP(fs, false);
         }
 
+        /// <summary>
+        /// Verify the content (from current stream's position) if the stream really contains a WebP image.
+        /// </summary>
+        /// <param name="stream">The stream to verify</param>
+        /// <returns>A boolean determine whether if the stream contains WebP data or not</returns>
         public static bool IsWebP(Stream stream)
         {
-            if (!stream.CanSeek)
+            return IsWebP(stream, true);
+        }
+
+        private static bool IsWebP(Stream stream, bool returnToOldPos)
+        {
+            if (returnToOldPos && !stream.CanSeek)
                 throw new NotSupportedException("Sorry");
 
             byte[] buffer = new byte[12];
@@ -1004,7 +1220,8 @@ namespace WebPWrapper.WPF
             try
             {
                 int read = stream.Read(buffer, 0, buffer.Length);
-                stream.Seek(-12, SeekOrigin.Current);
+                if (returnToOldPos)
+                    stream.Seek(-12, SeekOrigin.Current);
                 if (read == 12)
                 {
                     if (System.Text.Encoding.ASCII.GetString(buffer, 0, 4) == "RIFF")
@@ -1021,12 +1238,7 @@ namespace WebPWrapper.WPF
 
         /// <summary>Get info of WEBP data</summary>
         /// <param name="rawWebP">The data of WebP</param>
-        /// <param name="width">width of image</param>
-        /// <param name="height">height of image</param>
-        /// <param name="has_alpha">Image has alpha channel</param>
-        /// <param name="has_animation">Image is a animation</param>
-        /// <param name="format">Format of image: 0 = undefined (/mixed), 1 = lossy, 2 = lossless</param>
-        public static WebPHeader GetInfo(byte[] rawWebP)
+        public WebPHeader GetInfo(byte[] rawWebP)
         {
             GCHandle pinnedWebP = GCHandle.Alloc(rawWebP, GCHandleType.Pinned);
             try
@@ -1042,14 +1254,18 @@ namespace WebPWrapper.WPF
             }
         }
 
-        public static WebPHeader GetInfo(IntPtr memoryPointer, int length)
+        /// <summary>Get info of WEBP data</summary>
+        /// <param name="memoryPointer">Memonry pointer where the data start</param>
+        /// <param name="length">The length of the memory</param>
+        /// <returns></returns>
+        public WebPHeader GetInfo(IntPtr memoryPointer, int length)
         {
             VP8StatusCode result;
 
             try
             {
                 WebPBitstreamFeatures features = new WebPBitstreamFeatures();
-                result = UnsafeNativeMethods.WebPGetFeatures(memoryPointer, length, ref features);
+                result = this.library.WebPGetFeatures(memoryPointer, length, ref features);
 
                 if (result != 0)
                     throw new Exception(result.ToString());
@@ -1067,7 +1283,7 @@ namespace WebPWrapper.WPF
         /// <param name="reference">Reference picture</param>
         /// <param name="metric_type">0 = PSNR, 1 = SSIM, 2 = LSIM</param>
         /// <returns>dB in the Y/U/V/Alpha/All order</returns>
-        public static float[] GetPictureDistortion(BitmapSource source, BitmapSource reference, int metric_type)
+        public float[] GetPictureDistortion(BitmapSource source, BitmapSource reference, int metric_type)
         {
             WebPPicture wpicSource = new WebPPicture();
             WebPPicture wpicReference = new WebPPicture();
@@ -1100,29 +1316,29 @@ namespace WebPWrapper.WPF
 
                 // Setup the source picture data, allocating the bitmap, width and height
                 wpicSource = new WebPPicture();
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpicSource) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpicSource) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
                 wpicSource.width = src_width;
                 wpicSource.height = src_height;
                 wpicSource.use_argb = 1;
-                if (UnsafeNativeMethods.WebPPictureImportAuto(source.Format, ref wpicSource, memoryPointer, src_stride) != 1)
+                if (WebPPictureImportAuto(source.Format, ref wpicSource, memoryPointer, src_stride) != 1)
                     throw new Exception("Can´t allocate memory in WebPPictureImportBGR");
 
                 reference.CopyPixels(Int32Rect.Empty, memoryPointer, 1024, ref_stride);
 
                 // Setup the reference picture data, allocating the bitmap, width and height
                 wpicReference = new WebPPicture();
-                if (UnsafeNativeMethods.WebPPictureInitInternal(ref wpicReference) != 1)
+                if (this.library.WebPPictureInitInternal(ref wpicReference) != 1)
                     throw new Exception("Can´t init WebPPictureInit");
                 wpicReference.width = ref_width;
                 wpicReference.height = ref_height;
                 wpicReference.use_argb = 1;
-                if (UnsafeNativeMethods.WebPPictureImportAuto(reference.Format, ref wpicReference, memoryPointer, ref_stride) != 1)
+                if (WebPPictureImportAuto(reference.Format, ref wpicReference, memoryPointer, ref_stride) != 1)
                     throw new Exception("Can´t allocate memory in WebPPictureImportBGR");
 
                 //Measure
                 IntPtr ptrResult = pinnedResult.AddrOfPinnedObject();
-                if (UnsafeNativeMethods.WebPPictureDistortion(ref wpicSource, ref wpicReference, metric_type, ptrResult) != 1)
+                if (this.library.WebPPictureDistortion(ref wpicSource, ref wpicReference, metric_type, ptrResult) != 1)
                     throw new Exception("Can´t measure.");
                 return result;
             }
@@ -1131,9 +1347,9 @@ namespace WebPWrapper.WPF
             {
                 //Free memory
                 if (wpicSource.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpicSource);
+                    this.library.WebPPictureFree(ref wpicSource);
                 if (wpicReference.argb != IntPtr.Zero)
-                    UnsafeNativeMethods.WebPPictureFree(ref wpicReference);
+                    this.library.WebPPictureFree(ref wpicReference);
                 if (memoryPointer != IntPtr.Zero)
                     Marshal.FreeHGlobal(memoryPointer);
                 //Free memory
@@ -1150,9 +1366,11 @@ namespace WebPWrapper.WPF
         {
             if (this._disposed) return;
             this._disposed = true;
-            GC.SuppressFinalize(this);
 
+            Libwebp.DeInit(this);
             this.ManagedChunkPool.Dispose();
+
+            GC.SuppressFinalize(this);
         }
         #endregion
     }

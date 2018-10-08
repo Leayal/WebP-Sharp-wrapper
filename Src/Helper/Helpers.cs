@@ -3,8 +3,20 @@ using System.IO;
 using System.Runtime.InteropServices;
 using WebPWrapper.WPF.Buffer;
 
-namespace WebPWrapper.WPF
+namespace WebPWrapper.WPF.Helper
 {
+    internal static class RuntimeValue
+    {
+        internal static readonly bool is64bit = Environment.Is64BitProcess;
+
+        internal static string StringDependsArchitecture(string x86, string x64)
+        {
+            if (is64bit)
+                return x64;
+            else
+                return x86;
+        }
+    }
     /*
         private MemoryWriter webpMemory2;
 
@@ -176,132 +188,6 @@ namespace WebPWrapper.WPF
         public override void SetLength(long value)
         {
             throw new NotSupportedException();
-        }
-    }
-
-    /// <summary>
-    /// This one is totally busted. Failed
-    /// </summary>
-    class DiscardedWebPMemoryDirectBuffer : WebPContentBuffer
-    {
-        private UnmanagedChunkedBufferStream contentStream;
-        private UnmanagedMemoryChunk firstchunk;
-        private UnmanagedMemoryChunk currentchunk;
-        private WebPPicture wpic;
-
-        internal void Finish()
-        {
-            this.contentStream = new UnmanagedChunkedBufferStream(firstchunk);
-        }
-
-        internal override int MyWriter([InAttribute()] IntPtr data, UIntPtr data_size, ref WebPPicture picture)
-        {
-            int blocksize = (int)data_size;
-
-            if (firstchunk == null)
-            {
-                firstchunk = new UnmanagedMemoryChunk(data, blocksize);
-                currentchunk = firstchunk;
-            }
-            else
-            {
-                var newchunk = new UnmanagedMemoryChunk(data, blocksize);
-                currentchunk.Next = newchunk;
-                currentchunk = newchunk;
-            }
-
-            return 1;
-        }
-
-        internal DiscardedWebPMemoryDirectBuffer(ref WebPPicture pic)
-        {
-            this.contentStream = null;
-            this.wpic = pic;
-        }
-
-        public override bool CanRead => this.contentStream.CanRead;
-
-        public override bool CanSeek => this.contentStream.CanSeek;
-
-        public override bool CanWrite => false;
-
-        public override long Length => this.contentStream.Length;
-
-        public override long Position { get => this.contentStream.Position; set => this.contentStream.Position = value; }
-
-        public override void Flush()
-        {
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return this.contentStream.Seek(offset, origin);
-        }
-
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return this.contentStream.Read(buffer, offset, count);
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override int ReadByte()
-        {
-            return this.contentStream.ReadByte();
-        }
-
-        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-        {
-            return base.BeginRead(buffer, offset, count, callback, state);
-        }
-
-        public override int EndRead(IAsyncResult asyncResult)
-        {
-            return base.EndRead(asyncResult);
-        }
-
-        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override void EndWrite(IAsyncResult asyncResult)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override void WriteByte(byte value)
-        {
-            throw new NotSupportedException();
-        }
-
-        private bool _disposed;
-
-        protected override void Dispose(bool disposing)
-        {
-            try
-            {
-                if (disposing)
-                {
-                    if (this._disposed) return;
-                    this._disposed = true;
-
-                    if (wpic.argb != IntPtr.Zero)
-                        UnsafeNativeMethods.WebPPictureFree(ref wpic);
-                }
-            }
-            finally
-            {
-                base.Dispose(disposing);
-            }
         }
     }
 

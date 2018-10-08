@@ -17,7 +17,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\Build\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -28,7 +28,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\Build\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -53,11 +53,16 @@
     <Compile Include="DecoderOptions.cs" />
     <Compile Include="EncoderOptions.cs" />
     <Compile Include="Enums.cs" />
-    <Compile Include="Helpers.cs" />
+    <Compile Include="Helper\PEReader.cs" />
+    <Compile Include="Helper\Helpers.cs" />
+    <Compile Include="ILibwebp.cs" />
     <Compile Include="PixelBuffer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleWebPContentStream.cs" />
     <Compile Include="Structs.cs" />
+    <Compile Include="UnmanagedLibrary\libwebp.cs" />
+    <Compile Include="UnmanagedLibrary\NativeMethods.cs" />
+    <Compile Include="Helper\SafeLibraryHandle.cs" />
     <Compile Include="UnsafeNativeMethods.cs" />
     <Compile Include="WebP.cs" />
     <Compile Include="WebPContentStream.cs" />

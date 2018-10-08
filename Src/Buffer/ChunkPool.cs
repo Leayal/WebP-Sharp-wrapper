@@ -5,11 +5,13 @@ namespace WebPWrapper.WPF.Buffer
 {
     class ChunkPool : IDisposable
     {
+        private object locking;
         private readonly int _chunkSize;
         private ConcurrentBag<ManagedMemoryChunk> chunkList;
 
         internal ChunkPool(int chunkSize)
         {
+            this.locking = new object();
             this._chunkSize = chunkSize;
             this.chunkList = new ConcurrentBag<ManagedMemoryChunk>();
         }
@@ -21,21 +23,34 @@ namespace WebPWrapper.WPF.Buffer
 
         public ManagedMemoryChunk RequestChunk()
         {
-            if (this.chunkList == null)
-                throw new ObjectDisposedException("ChunkPool");
+            ConcurrentBag<ManagedMemoryChunk> list;
+            lock (this.locking)
+            {
+                if (this.chunkList == null)
+                    throw new ObjectDisposedException("ChunkPool");
+
+                list = chunkList;
+            }
             ManagedMemoryChunk chunk;
-            if (this.chunkList.TryTake(out chunk))
+            if (list.TryTake(out chunk))
             {
                 // Array.Clear(chunk.Buffer, 0, chunk.Buffer.Length);
+                list = null;
                 return chunk;
             }
             else
+            {
+                list = null;
                 return new ManagedMemoryChunk(this._chunkSize);
+            }
         }
 
         public void Dispose()
         {
-            this.chunkList = null;
+            lock (this.locking)
+            {
+                this.chunkList = null;
+            }
         }
     }
 }

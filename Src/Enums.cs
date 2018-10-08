@@ -2,6 +2,7 @@
 
 namespace WebPWrapper.WPF
 {
+    /// <summary>Flags to determine how the encoder uses the memory</summary>
     [Flags]
     public enum MemoryAllowance
     {
@@ -15,19 +16,24 @@ namespace WebPWrapper.WPF
         LowMemoryCompressionMode = 1 << 0,
         /// <summary>
         /// If this flag is set, the encoder will try to allocate contiguous memory block and write the output to it. This flag DOES NOT affects "encode to file" methods.
-        /// It is not recommended but unless you really need it.
+        /// It is not recommended in general unless you really need it.
         /// </summary>
         ForcedContiguousMemory = 1 << 1
     }
+    /// <summary>Compression method</summary>
     public enum CompressionType
     {
+        /// <summary>[Experimental] Somewhere between the other two compression</summary>
         NearLossless,
+        /// <summary>Lossy compression</summary>
         Lossy,
+        /// <summary>Lossless compression</summary>
         Lossless
     }
     /// <summary>Predictive filtering method for alpha plane</summary>
     public enum AlphaFiltering
     {
+        /// <summary>No alpha-filtering</summary>
         None,
         /// <summary>Default value</summary>
         Fast,
@@ -53,7 +59,8 @@ namespace WebPWrapper.WPF
 
     public enum FilterSharpness
     {
-        Off,
+        /// <summary>Turn off sharpness filter</summary>
+        Off = 0,
         /// <summary>Highest sharpness</summary>
         Level1,
         Level2,
@@ -76,7 +83,9 @@ namespace WebPWrapper.WPF
     /// <summary>Algorithm for encoding the alpha plane</summary>
     public enum AlphaCompressionType
     {
+        /// <summary>Turn off alpha plane compression</summary>
         None,
+        /// <summary>Lossless compression</summary>
         Lossless
     }
 
@@ -84,17 +93,17 @@ namespace WebPWrapper.WPF
     public enum WebPPreset
     {
         /// <summary>Default preset.</summary>
-        WEBP_PRESET_DEFAULT = 0,
+        Default = 0,
         /// <summary>Digital picture, like portrait, inner shot.</summary>
-        WEBP_PRESET_PICTURE,
+        Picture,
         /// <summary>Outdoor photograph, with natural lighting.</summary>
-        WEBP_PRESET_PHOTO,
+        Photo,
         /// <summary>Hand or line drawing, with high-contrast details.</summary>
-        WEBP_PRESET_DRAWING,
+        Drawing,
         /// <summary>Small-sized colorful images.</summary>
-        WEBP_PRESET_ICON,
-        /// <summary>Text-like.</summary>
-        WEBP_PRESET_TEXT
+        Icon,
+        /// <summary>Text-like images.</summary>
+        Text
     };
 
     /// <summary>Encoding error conditions.</summary>
@@ -147,19 +156,19 @@ namespace WebPWrapper.WPF
     public enum WebPImageHint
     {
         /// <summary>Default preset.</summary>
-        WEBP_HINT_DEFAULT = 0,
+        Default = 0,
         /// <summary>Digital picture, like portrait, inner shot</summary>
-        WEBP_HINT_PICTURE,
+        Picture,
         /// <summary>Outdoor photograph, with natural lighting</summary>
-        WEBP_HINT_PHOTO,
+        Photo,
         /// <summary>Discrete tone image (graph, map-tile etc).</summary>
-        WEBP_HINT_GRAPH,
+        Graph,
         /// <summary>list terminator. always last.</summary>
-        WEBP_HINT_LAST
+        Last
     };
 
     /// <summary>Describes the byte-ordering of packed samples in memory.</summary>
-    enum WEBP_CSP_MODE
+    public enum WEBP_CSP_MODE
     {
         /// <summary>Byte-order: R,G,B,R,G,B,...</summary>
         MODE_RGB = 0,

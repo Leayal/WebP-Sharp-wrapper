@@ -1,33 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.Remoting;
-using System.Text;
-using System.Threading;
+using WebPWrapper.WPF.Buffer;
 
 namespace WebPWrapper.WPF
 {
-    class SimpleWebPContentStream : WebPContentStream
+    class SimpleWebPContentStream : ChunkedBufferStream
     {
-        private IntPtr myPointer;
-
-        internal SimpleWebPContentStream(IntPtr memoryPointer, int length) : base(memoryPointer, length)
+        internal SimpleWebPContentStream(IntPtr memoryPointer, int length) : base(false)
         {
-            this.myPointer = memoryPointer;
-        }
-
-        protected bool _closed;
-        public override void Close()
-        {
-            base.Close();
-            if (this._closed) return;
-            this._closed = true;
-            if (this.myPointer != IntPtr.Zero)
+            unsafe
             {
-                UnsafeNativeMethods.WebPFree(this.myPointer);
-                this.myPointer = IntPtr.Zero;
+                byte* b = (byte*)(memoryPointer.ToPointer());
+                for (int i = 0; i < length; i++)
+                    this.WriteByte(b[i]);
             }
+            this.SetReadOnlyCore(true);
         }
     }
 }

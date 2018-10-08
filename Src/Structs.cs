@@ -9,7 +9,7 @@ namespace WebPWrapper.WPF
 {
     /// <summary>Features gathered from the bitstream</summary>
     [StructLayoutAttribute(LayoutKind.Sequential)]
-    internal struct WebPBitstreamFeatures
+    public struct WebPBitstreamFeatures
     {
         /// <summary>Width in pixels, as read from the bitstream.</summary>
         public int width;
@@ -28,7 +28,7 @@ namespace WebPWrapper.WPF
 
     /// <summary>Compression parameters.</summary>
     [StructLayoutAttribute(LayoutKind.Sequential)]
-    internal struct WebPConfig
+    public struct WebPConfig
     {
         /// <summary>Lossless encoding (0=lossy(default), 1=lossless).</summary>
         public int lossless;
@@ -90,7 +90,7 @@ namespace WebPWrapper.WPF
 
     /// <summary>Main exchange structure (input samples, output bytes, statistics)</summary>
     [StructLayoutAttribute(LayoutKind.Sequential)]
-    internal struct WebPPicture
+    public struct WebPPicture
     {
         /// <summary>Main flag for encoder selecting between ARGB or YUV input. Recommended to use ARGB input (*argb, argb_stride) for lossless, and YUV input (*y, *u, *v, etc.) for lossy</summary>
         public int use_argb;
@@ -155,7 +155,7 @@ namespace WebPWrapper.WPF
 
     /// <summary>Structure for storing auxiliary statistics (mostly for lossy encoding).</summary>
     [StructLayoutAttribute(LayoutKind.Sequential)]
-    internal struct WebPAuxStats
+    public struct WebPAuxStats
     {
         /// <summary>Final size</summary>
         public int coded_size;
@@ -255,7 +255,7 @@ namespace WebPWrapper.WPF
     };
 
     [StructLayoutAttribute(LayoutKind.Sequential)]
-    internal struct WebPDecoderConfig
+    public struct WebPDecoderConfig
     {
         /// <summary>Immutable bitstream features (optional)</summary>
         public WebPBitstreamFeatures input;
@@ -267,7 +267,7 @@ namespace WebPWrapper.WPF
 
     /// <summary>Output buffer</summary>
     [StructLayoutAttribute(LayoutKind.Sequential)]
-    internal struct WebPDecBuffer
+    public struct WebPDecBuffer
     {
         /// <summary>Colorspace.</summary>
         public WEBP_CSP_MODE colorspace;
@@ -293,7 +293,7 @@ namespace WebPWrapper.WPF
 
     /// <summary>Union of buffer parameters</summary>
     [StructLayoutAttribute(LayoutKind.Explicit)]
-    internal struct RGBA_YUVA_Buffer
+    public struct RGBA_YUVA_Buffer
     {
         [FieldOffsetAttribute(0)]
         public WebPRGBABuffer RGBA;
@@ -303,7 +303,7 @@ namespace WebPWrapper.WPF
     }
 
     [StructLayoutAttribute(LayoutKind.Sequential)]
-    internal struct WebPYUVABuffer
+    public struct WebPYUVABuffer
     {
         /// <summary>Pointer to luma samples</summary>
         public IntPtr y;
@@ -333,7 +333,7 @@ namespace WebPWrapper.WPF
 
     /// <summary>Generic structure for describing the output sample buffer.</summary>
     [StructLayoutAttribute(LayoutKind.Sequential)]
-    internal struct WebPRGBABuffer
+    public struct WebPRGBABuffer
     {
         /// <summary>pointer to RGBA samples.</summary>
         public IntPtr rgba;
@@ -345,7 +345,7 @@ namespace WebPWrapper.WPF
 
     /// <summary>Decoding options</summary>
     [StructLayoutAttribute(LayoutKind.Sequential)]
-    internal struct WebPDecoderOptions
+    public struct WebPDecoderOptions
     {
         /// <summary>if true, skip the in-loop filtering.</summary>
         public int bypass_filtering;

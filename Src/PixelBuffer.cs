@@ -1,46 +1,25 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Windows.Media.Imaging;
 using System.Windows.Media;
 using System.Runtime.InteropServices;
+using System.Reflection;
 
 namespace WebPWrapper.WPF
 {
     class PixelBuffer : IDisposable
     {
+        private static readonly PropertyInfo PixelFormat_HasAlphaProperty = typeof(PixelFormat).GetProperty("HasAlpha", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         private byte[] _buffer;
         private bool? _hasAlpha;
         private bool _working;
         private int length, _stride, _pixelWidth, _pixelHeight;
         private PixelFormat _pixelFormat;
         private GCHandle _handle;
+        private bool _directAccessMode;
+        private WriteableBitmap directAccessTarget;
+        private ReadOnlyCollection<byte> publicBuffer;
 
-        public PixelBuffer(BitmapSource bitmap, System.Windows.Media.PixelFormat preferedFormat) : this(bitmap, preferedFormat, 0.0d) { }
-
-        /// <summary>
-        /// Copy the BackBuffer of <see cref="BitmapSource"/> and convert the <see cref="System.Windows.Media.PixelFormat"/>.
-        /// </summary>
-        /// <param name="bitmap">The bitmap source</param>
-        /// <param name="preferedFormat">Just as it explain</param>
-        /// <param name="preferedFormat">Just as it explain</param>
-        public PixelBuffer(BitmapSource bitmap, System.Windows.Media.PixelFormat preferedFormat, double alphaThreshold)
-        {
-            if (bitmap == null || preferedFormat == null)
-                throw new ArgumentNullException();
-            if (bitmap.Format == null)
-                throw new InvalidOperationException("Unknown image format");
-
-            if (bitmap.Format == preferedFormat)
-                this.Init(bitmap);
-            else
-            {
-                this.Init(new FormatConvertedBitmap(bitmap, preferedFormat, bitmap.Palette, alphaThreshold));
-            }
-        }
-
-        public int PixelWidth => this._pixelWidth;
-        public int PixelHeight => this._pixelHeight;
-        public int BackBufferStride => this._stride;
-        
 
         /// <summary>
         /// Copy BackBuffer from a <see cref="BitmapSource"/> instance.
@@ -54,6 +33,78 @@ namespace WebPWrapper.WPF
                 throw new InvalidOperationException("Unknown image format");
 
             this.Init(bitmap);
+        }
+
+        public PixelBuffer(BitmapSource bitmap, PixelFormat preferedFormat) : this(bitmap, preferedFormat, 0.0d) { }
+
+        /// <summary>
+        /// Copy the BackBuffer of <see cref="BitmapSource"/> and convert to the <see cref="System.Windows.Media.PixelFormat"/>.
+        /// </summary>
+        /// <param name="bitmap">The bitmap source</param>
+        /// <param name="preferedFormat">Just as it explain</param>
+        /// <param name="alphaThreshold">Just as it explain. Default value is 0.0</param>
+        public PixelBuffer(BitmapSource bitmap, PixelFormat preferedFormat, double alphaThreshold) : this(bitmap, preferedFormat, false, alphaThreshold) { }
+
+        /// <summary>
+        /// Initialize a new <see cref="PixelBuffer"/> instance with given <see cref="WriteableBitmap"/> and convert to the <see cref="System.Windows.Media.PixelFormat"/>.
+        /// </summary>
+        /// <param name="bitmap">The bitmap source</param>
+        /// <param name="preferedFormat">Just as it explain. If pixel format conversion is needed, switch to PixelCopy regardless argument <paramref name="allowDirectAccess"/>'s value.</param>
+        /// <param name="allowDirectAccess">Determine if PixelBuffer should be allowed to call <see cref="WriteableBitmap.TryLock(System.Windows.Duration)"/> and use the <see cref="WriteableBitmap.BackBuffer"/>. If the bitmap can't be locked, fallback to PixelCopy.</param>
+        /// <param name="alphaThreshold">Just as it explain. Default value is 0.0</param>
+        public PixelBuffer(BitmapSource bitmap, PixelFormat preferedFormat, bool allowDirectAccess, double alphaThreshold)
+        {
+            if (bitmap == null || preferedFormat == null)
+                throw new ArgumentNullException();
+            if (bitmap.Format == null)
+                throw new InvalidOperationException("Unknown image format");
+
+            if (bitmap.Format == preferedFormat)
+            {
+                if (allowDirectAccess && bitmap is WriteableBitmap writeable)
+                {
+                    this.InitDirect(writeable);
+                }
+                else
+                {
+                    this.Init(bitmap);
+                }
+            }
+            else
+            {
+                FormatConvertedBitmap a = new FormatConvertedBitmap(bitmap, preferedFormat, bitmap.Palette, alphaThreshold);
+                if (a.CanFreeze)
+                    a.Freeze();
+                this.Init(a);
+            }
+        }
+
+        public int PixelWidth => this._pixelWidth;
+        public int PixelHeight => this._pixelHeight;
+        public int BackBufferStride => this._stride;
+
+        private void InitDirect(WriteableBitmap bitmap)
+        {
+            if (bitmap.TryLock(System.Windows.Duration.Forever))
+            {
+                this._directAccessMode = true;
+                this.directAccessTarget = bitmap;
+
+                this._hasAlpha = null;
+                this._disposed = false;
+                this._working = false;
+
+                this._pixelFormat = bitmap.Format;
+                this._pixelWidth = bitmap.PixelWidth;
+                this._pixelHeight = bitmap.PixelHeight;
+
+                this._stride = bitmap.BackBufferStride;
+                this.length = bitmap.BackBufferStride * this._pixelHeight;
+            }
+            else
+            {
+                this.Init(bitmap);
+            }
         }
 
         private void Init(BitmapSource bitmap)
@@ -72,20 +123,61 @@ namespace WebPWrapper.WPF
             this._buffer = new byte[length];
             bitmap.CopyPixels(this._buffer, this._stride, 0);
             this._handle = GCHandle.Alloc(this._buffer, GCHandleType.Pinned);
+
+            this.publicBuffer = new ReadOnlyCollection<byte>(this._buffer);
         }
 
-        public byte[] GetBuffer()
+        /// <summary>
+        /// Directly access the back buffer. Unsupported if <see cref="PixelBuffer"/> is directly accessing to a <see cref="WriteableBitmap"/>.
+        /// </summary>
+        /// <returns></returns>
+        public ReadOnlyCollection<byte> AccessBuffer()
         {
             if (this._disposed)
                 throw new ObjectDisposedException("PixelBuffer");
-            return this._buffer;
+            if (this._directAccessMode)
+                throw new InvalidOperationException();
+
+            return this.publicBuffer;
+        }
+
+        /// <summary>
+        /// Get a copy of back buffer. If you don't want to copy, use <see cref="AccessBuffer"/>.
+        /// </summary>
+        /// <returns></returns>
+        public byte[] ToArray()
+        {
+            if (this._disposed)
+                throw new ObjectDisposedException("PixelBuffer");
+            if (this._directAccessMode)
+                throw new InvalidOperationException();
+
+            byte[] copiedBuffer = new byte[this.length];
+
+            if (this._directAccessMode)
+            {
+                this.directAccessTarget.CopyPixels(copiedBuffer, this._stride, 0);
+            }
+            else
+            {
+                Array.Copy(this._buffer, copiedBuffer, copiedBuffer.Length);
+            }
+
+            return copiedBuffer;
         }
 
         public IntPtr GetPointer()
         {
             if (this._disposed)
                 throw new ObjectDisposedException("PixelBuffer");
-            return this._handle.AddrOfPinnedObject();
+            if (this._directAccessMode)
+            {
+                return this.directAccessTarget.BackBuffer;
+            }
+            else
+            {
+                return this._handle.AddrOfPinnedObject();
+            }
         }
 
         public bool HasAlpha
@@ -102,15 +194,25 @@ namespace WebPWrapper.WPF
             }
         }
 
+        private bool? _doesItHaveAndUseAlpha = null;
+
         private bool DoesItHaveAndUseAlpha()
         {
+            if (this._doesItHaveAndUseAlpha.HasValue)
+                return _doesItHaveAndUseAlpha.Value;
             if (this._working)
                 throw new InvalidOperationException("I'm working on searching for alpha");
             this._working = true;
-            if (this.IsItPossibleToContainsAlpha())
-                return this.DoesItReallyUseAlpha();
+            if (this.IsItPossibleToContainsAlpha() && this.DoesItReallyUseAlpha())
+            {
+                this._doesItHaveAndUseAlpha = true;
+                return true;
+            }
             else
+            {
+                this._doesItHaveAndUseAlpha = false;
                 return false;
+            }
         }
 
         public bool IsItPossibleToContainsAlpha()
@@ -124,19 +226,25 @@ namespace WebPWrapper.WPF
         /// <returns></returns>
         public static bool IsItPossibleToContainsAlpha(PixelFormat format)
         {
-            // (image.PixelFormat & (PixelFormat.Indexed | PixelFormat.Alpha | PixelFormat.PAlpha)) == PixelFormat.Undefined
-            if (format == PixelFormats.Bgr32)
-                return true;
-            else if (format == PixelFormats.Bgra32)
-                return true;
-            else if (format == PixelFormats.Indexed8)
-                return true;
-            else if (format == PixelFormats.Pbgra32)
-                return true;
-            else if (format == PixelFormats.Rgba64)
-                return true;
+            if (PixelFormat_HasAlphaProperty == null)
+            {
+                // (image.PixelFormat & (PixelFormat.Indexed | PixelFormat.Alpha | PixelFormat.PAlpha)) == PixelFormat.Undefined
+                if (format == PixelFormats.Bgra32)
+                    return true;
+                else if (format == PixelFormats.Indexed8)
+                    return true;
+                else if (format == PixelFormats.Pbgra32)
+                    return true;
+                else if (format == PixelFormats.Rgba64)
+                    return true;
+                else
+                    return false;
+            }
             else
-                return false;
+            {
+                // Use Reflector to get internal "HasAlpha" property.
+                return (bool)PixelFormat_HasAlphaProperty.GetValue(format, null);
+            }
         }
 
         /// <summary>
@@ -146,12 +254,29 @@ namespace WebPWrapper.WPF
         {
             int off = 3,
                 gap = this._stride - this._pixelWidth * 4;
-            for (var y = 0; y < this._pixelHeight; y++, off += gap)
-                for (var x = 0; x < this._pixelWidth; x++, off += 4)
+            if (this._directAccessMode)
+            {
+                unsafe
                 {
-                    if (this._buffer[off] != 255)
-                        return true;
+                    byte* b = (byte*)this.directAccessTarget.BackBuffer.ToPointer();
+                    for (var y = 0; y < this._pixelHeight; y++, off += gap)
+                        for (var x = 0; x < this._pixelWidth; x++, off += 4)
+                        {
+                            if (b[off] != 255)
+                                return true;
+                        }
+                    b = null;
                 }
+            }
+            else
+            {
+                for (var y = 0; y < this._pixelHeight; y++, off += gap)
+                    for (var x = 0; x < this._pixelWidth; x++, off += 4)
+                    {
+                        if (this._buffer[off] != 255)
+                            return true;
+                    }
+            }
             return false;
         }
 
@@ -166,6 +291,10 @@ namespace WebPWrapper.WPF
             if (this._handle.IsAllocated)
                 this._handle.Free();
 
+            if (this._directAccessMode && (this.directAccessTarget != null))
+                this.directAccessTarget.Unlock();
+
+            this.directAccessTarget = null;
             this._buffer = null;
         }
     }
