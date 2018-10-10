@@ -1,26 +1,23 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.IO;
 using System.Runtime.InteropServices;
 using WebPWrapper.WPF.Helper;
-using System.Collections.Generic;
 
-namespace WebPWrapper.WPF.UnmanagedLibrary
+namespace WebPWrapper.WPF.LowLevel
 {
     /// <summary>
     /// Provides managed function wrapper for unmanaged libwebp library
     /// </summary>
     internal class Libwebp : ILibwebp, IDisposable
     {
-        public const int WEBP_DECODER_ABI_VERSION = 0x0208;
         private static readonly ConcurrentDictionary<string, Libwebp> cache = new ConcurrentDictionary<string, Libwebp>(StringComparer.OrdinalIgnoreCase);
         
         private int partners;
         private SafeLibraryHandle libraryHandle;
-        private ConcurrentDictionary<string, Delegate> _methods;
+        private ConcurrentDictionary<Type, Delegate> _methods;
+        private ConcurrentDictionary<string, IntPtr> _functionPointer;
         private string _libpath;
 
         /// <summary>
@@ -28,13 +25,20 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// </summary>
         public string LibraryPath => this._libpath;
 
-        internal Libwebp(string myLibPath)
+        /// <summary>Huh??</summary>
+        /// <param name="myLibPath">Library path to load</param>
+        /// <param name="preload">True to load the library without load all needed functions.</param>
+        /// <remarks>
+        /// Preloading will only load the library, then find the function pointers on demand. This will allow to load seamlessly all sub-build of the libwebp: decode-only library, encode-only library and all-in-one library.
+        /// Without preload, all functions will be found at library load. This means only all-in-one libwebp library is qualified, any other sub-build may give error because of missing functions.
+        /// </remarks>
+        internal Libwebp(string myLibPath, bool preload)
         {
             if (string.IsNullOrWhiteSpace(myLibPath))
                 throw new ArgumentNullException("myLibPath");
             // if (!File.Exists(myLibPath)) throw new FileNotFoundException("Library not found", myLibPath);
 
-            this.LoadLib(Path.GetFullPath(myLibPath));
+            this.LoadLib(Path.GetFullPath(myLibPath), preload);
             Interlocked.Exchange(ref this.partners, 0);
         }
 
@@ -47,12 +51,12 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
             library_path = Path.GetFullPath(library_path);
             if (!cache.TryGetValue(library_path, out myLib))
             {
-                myLib = new Libwebp(library_path);
+                // Let's leave the full-load library for another time.
+                myLib = new Libwebp(library_path, true);
                 cache.TryAdd(library_path, myLib);
             }
 
             Interlocked.Increment(ref myLib.partners);
-
             return myLib;
         }
 
@@ -71,7 +75,7 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
             }
         }
 
-        private void LoadLib(string path)
+        private void LoadLib(string path, bool preload)
         {
             if (this.libraryHandle != null)
                 return;
@@ -100,95 +104,101 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
             }
             else
             {
-                // Check if the library is really libwebp
-                this._methods = new ConcurrentDictionary<string, Delegate>();
-
-                // WebPConfigInitInternal
-                this._methods.TryAdd("WebPConfigInitInternal", AssertFunctionLoadFailure<NativeDelegates.WebPConfigInitInternal>(ref handle, "WebPConfigInitInternal"));
-
-                // WebPConfigInitInternal
-                this._methods.TryAdd("WebPGetFeaturesInternal", AssertFunctionLoadFailure<NativeDelegates.WebPGetFeaturesInternal>(ref handle, "WebPGetFeaturesInternal"));
-
-                // WebPConfigLosslessPreset
-                this._methods.TryAdd("WebPConfigLosslessPreset", AssertFunctionLoadFailure<NativeDelegates.WebPConfigLosslessPreset>(ref handle, "WebPConfigLosslessPreset"));
-
-                // WebPValidateConfig
-                this._methods.TryAdd("WebPValidateConfig", AssertFunctionLoadFailure<NativeDelegates.WebPValidateConfig>(ref handle, "WebPValidateConfig"));
-
-                // WebPPictureInitInternal
-                this._methods.TryAdd("WebPPictureInitInternal", AssertFunctionLoadFailure<NativeDelegates.WebPPictureInitInternal>(ref handle, "WebPPictureInitInternal"));
-
-                // WebPPictureImportBGR
-                this._methods.TryAdd("WebPPictureImportBGR", AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>(ref handle, "WebPPictureImportBGR"));
-
-                // WebPPictureImportBGRA
-                this._methods.TryAdd("WebPPictureImportBGRA", AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>(ref handle, "WebPPictureImportBGRA"));
-
-                // WebPPictureImportRGB
-                this._methods.TryAdd("WebPPictureImportRGB", AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>(ref handle, "WebPPictureImportRGB"));
-
-                // WebPPictureImportRGBA
-                this._methods.TryAdd("WebPPictureImportRGBA", AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>(ref handle, "WebPPictureImportRGBA"));
-
-                // WebPPictureImportBGRX
-                this._methods.TryAdd("WebPPictureImportBGRX", AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>(ref handle, "WebPPictureImportBGRX"));
-
-                // WebPEncode
-                this._methods.TryAdd("WebPEncode", AssertFunctionLoadFailure<NativeDelegates.WebPEncode>(ref handle, "WebPEncode"));
-
-                // WebPPictureFree
-                this._methods.TryAdd("WebPPictureFree", AssertFunctionLoadFailure<NativeDelegates.WebPPictureFree>(ref handle, "WebPPictureFree"));
-
-                // WebPGetInfo
-                this._methods.TryAdd("WebPGetInfo", AssertFunctionLoadFailure<NativeDelegates.WebPGetInfo>(ref handle, "WebPGetInfo"));
-
-                // WebPDecodeBGRInto
-                this._methods.TryAdd("WebPDecodeBGRInto", AssertFunctionLoadFailure<NativeDelegates.WebPDecodeBGRInto>(ref handle, "WebPDecodeBGRInto"));
-
-                // WebPInitDecoderConfigInternal
-                this._methods.TryAdd("WebPInitDecoderConfigInternal", AssertFunctionLoadFailure<NativeDelegates.WebPInitDecoderConfigInternal>(ref handle, "WebPInitDecoderConfigInternal"));
-
-                // WebPDecode
-                this._methods.TryAdd("WebPDecode", AssertFunctionLoadFailure<NativeDelegates.WebPDecode>(ref handle, "WebPDecode"));
-
-                // WebPFreeDecBuffer
-                this._methods.TryAdd("WebPFreeDecBuffer", AssertFunctionLoadFailure<NativeDelegates.WebPFreeDecBuffer>(ref handle, "WebPFreeDecBuffer"));
-
-                // WebPEncodeBGR
-                this._methods.TryAdd("WebPEncodeBGR", AssertFunctionLoadFailure<NativeDelegates.WebPEncodeAuto>(ref handle, "WebPEncodeBGR"));
-
-                // WebPEncodeRGB
-                this._methods.TryAdd("WebPEncodeRGB", AssertFunctionLoadFailure<NativeDelegates.WebPEncodeAuto>(ref handle, "WebPEncodeRGB"));
-
-                // WebPEncodeBGRA
-                this._methods.TryAdd("WebPEncodeBGRA", AssertFunctionLoadFailure<NativeDelegates.WebPEncodeAuto>(ref handle, "WebPEncodeBGRA"));
-
-                // WebPEncodeRGBA
-                this._methods.TryAdd("WebPEncodeRGBA", AssertFunctionLoadFailure<NativeDelegates.WebPEncodeAuto>(ref handle, "WebPEncodeRGBA"));
-
-                // WebPEncodeLosslessBGR
-                this._methods.TryAdd("WebPEncodeLosslessBGR", AssertFunctionLoadFailure<NativeDelegates.WebPEncodeLosslessAuto>(ref handle, "WebPEncodeLosslessBGR"));
-
-                // WebPEncodeLosslessBGRA
-                this._methods.TryAdd("WebPEncodeLosslessBGRA", AssertFunctionLoadFailure<NativeDelegates.WebPEncodeLosslessAuto>(ref handle, "WebPEncodeLosslessBGRA"));
-
-                // WebPEncodeLosslessRGB
-                this._methods.TryAdd("WebPEncodeLosslessRGB", AssertFunctionLoadFailure<NativeDelegates.WebPEncodeLosslessAuto>(ref handle, "WebPEncodeLosslessRGB"));
-
-                // WebPEncodeLosslessRGBA
-                this._methods.TryAdd("WebPEncodeLosslessRGBA", AssertFunctionLoadFailure<NativeDelegates.WebPEncodeLosslessAuto>(ref handle, "WebPEncodeLosslessRGBA"));
-
-                // WebPFree
-                this._methods.TryAdd("WebPFree", AssertFunctionLoadFailure<NativeDelegates.WebPFree>(ref handle, "WebPFree"));
-
-                // WebPGetDecoderVersion
-                this._methods.TryAdd("WebPGetDecoderVersion", AssertFunctionLoadFailure<NativeDelegates.WebPGetDecoderVersion>(ref handle, "WebPGetDecoderVersion"));
-
-                // WebPPictureDistortion
-                this._methods.TryAdd("WebPPictureDistortion", AssertFunctionLoadFailure<NativeDelegates.WebPPictureDistortion>(ref handle, "WebPPictureDistortion"));
-
+                this._functionPointer = new ConcurrentDictionary<string, IntPtr>();
+                this._methods = new ConcurrentDictionary<Type, Delegate>();
                 this.libraryHandle = handle;
                 this._libpath = path;
+
+                // Check if the library is really a FULL libwebp (with both encode and decode functions)
+                if (!preload)
+                {
+                    // WebPConfigInitInternal
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPConfigInitInternal>("WebPConfigInitInternal");
+
+                    // WebPConfigInitInternal
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPGetFeaturesInternal>("WebPGetFeaturesInternal");
+
+                    // WebPConfigLosslessPreset
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPConfigLosslessPreset>("WebPConfigLosslessPreset");
+
+                    // WebPValidateConfig
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPValidateConfig>("WebPValidateConfig");
+
+                    // WebPPictureInitInternal
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPPictureInitInternal>("WebPPictureInitInternal");
+
+                    // WebPPictureImportBGR
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportBGR");
+
+                    // WebPPictureImportBGRA
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportBGRA");
+
+                    // WebPPictureImportRGB
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportRGB");
+
+                    // WebPPictureImportRGBA
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportRGBA");
+
+                    // WebPPictureImportBGRX
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportBGRX");
+
+                    // WebPEncode
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPEncode>("WebPEncode");
+
+                    // WebPPictureFree
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPPictureFree>("WebPPictureFree");
+
+                    // WebPGetInfo
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPGetInfo>("WebPGetInfo");
+
+                    // WebPDecodeBGRInto
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPDecodeBGRInto>("WebPDecodeBGRInto");
+
+                    // WebPInitDecoderConfigInternal
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPInitDecoderConfigInternal>("WebPInitDecoderConfigInternal");
+
+                    // WebPDecode
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPDecode>("WebPDecode");
+
+                    // WebPFreeDecBuffer
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPFreeDecBuffer>("WebPFreeDecBuffer");
+
+                    // WebPEncodeBGR
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPEncodeAuto>("WebPEncodeBGR");
+
+                    // WebPEncodeRGB
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPEncodeAuto>("WebPEncodeRGB");
+
+                    // WebPEncodeBGRA
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPEncodeAuto>("WebPEncodeBGRA");
+
+                    // WebPEncodeRGBA
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPEncodeAuto>("WebPEncodeRGBA");
+
+                    // WebPEncodeLosslessBGR
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessBGR");
+
+                    // WebPEncodeLosslessBGRA
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessBGRA");
+
+                    // WebPEncodeLosslessRGB
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessRGB");
+
+                    // WebPEncodeLosslessRGBA
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessRGBA");
+
+                    // WebPFree
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPFree>("WebPFree");
+
+                    // WebPGetDecoderVersion
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPGetVersion>("WebPGetDecoderVersion");
+
+                    // WebPGetEncoderVersion
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPGetVersion>("WebPGetEncoderVersion");
+
+                    // WebPPictureDistortion
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPGetVersion>("WebPPictureDistortion");
+                }
             }
         }
 
@@ -199,9 +209,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>0 if error</returns>
         public int WebPConfigInit(ref WebPConfig config, WebPPreset preset, float quality)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPConfigInitInternal)this._methods["WebPConfigInitInternal"];
-            return @delegate.Invoke(ref config, preset, quality, WEBP_DECODER_ABI_VERSION);
+            if (this.TryGetFunction< NativeDelegates.WebPConfigInitInternal >("WebPConfigInitInternal", out var @delegate))
+            {
+                return @delegate.Invoke(ref config, preset, quality, Define.WEBP_DECODER_ABI_VERSION);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPConfigInitInternal' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Get info of WepP image</summary>
@@ -211,9 +223,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>VP8StatusCode</returns>
         public VP8StatusCode WebPGetFeatures(IntPtr rawWebP, uint data_size, ref WebPBitstreamFeatures features)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPGetFeaturesInternal)this._methods["WebPGetFeaturesInternal"];
-            return (VP8StatusCode)@delegate.Invoke(rawWebP, new UIntPtr(data_size), ref features, WEBP_DECODER_ABI_VERSION);
+            if (this.TryGetFunction<NativeDelegates.WebPGetFeaturesInternal>("WebPGetFeaturesInternal", out var @delegate))
+            {
+                return (VP8StatusCode)@delegate.Invoke(rawWebP, new UIntPtr(data_size), ref features, Define.WEBP_DECODER_ABI_VERSION);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPGetFeaturesInternal' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Get info of WepP image</summary>
@@ -221,11 +235,7 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="data_size">Size of rawWebP</param>
         /// <param name="features">Features of WebP image</param>
         /// <returns>VP8StatusCode</returns>
-        public VP8StatusCode WebPGetFeatures(IntPtr rawWebP, int data_size, ref WebPBitstreamFeatures features)
-        {
-            this.AssertLibraryCallFailure();
-            return this.WebPGetFeatures(rawWebP, Convert.ToUInt32(data_size), ref features);
-        }
+        public VP8StatusCode WebPGetFeatures(IntPtr rawWebP, int data_size, ref WebPBitstreamFeatures features) => this.WebPGetFeatures(rawWebP, Convert.ToUInt32(data_size), ref features);
 
         /// <summary>Activate the lossless compression mode with the desired efficiency.</summary>
         /// <param name="config">The WebPConfig struct</param>
@@ -233,9 +243,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>0 in case of parameter errorr</returns>
         public int WebPConfigLosslessPreset(ref WebPConfig config, int level)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPConfigLosslessPreset)this._methods["WebPConfigLosslessPreset"];
-            return @delegate.Invoke(ref config, level);
+            if (this.TryGetFunction<NativeDelegates.WebPConfigLosslessPreset>("WebPConfigLosslessPreset", out var @delegate))
+            {
+                return @delegate.Invoke(ref config, level);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPConfigLosslessPreset' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Check that 'config' is non-NULL and all configuration parameters are within their valid ranges.</summary>
@@ -243,9 +255,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>1 if config are OK</returns>
         public int WebPValidateConfig(ref WebPConfig config)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPValidateConfig)this._methods["WebPValidateConfig"];
-            return @delegate.Invoke(ref config);
+            if (this.TryGetFunction<NativeDelegates.WebPValidateConfig>("WebPValidateConfig", out var @delegate))
+            {
+                return @delegate.Invoke(ref config);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPValidateConfig' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Init the struct WebPPicture ckecking the dll version</summary>
@@ -253,9 +267,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>1 if not error</returns>
         public int WebPPictureInitInternal(ref WebPPicture wpic)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPPictureInitInternal)this._methods["WebPPictureInitInternal"];
-            return @delegate.Invoke(ref wpic, WEBP_DECODER_ABI_VERSION);
+            if (this.TryGetFunction<NativeDelegates.WebPPictureInitInternal>("WebPPictureInitInternal", out var @delegate))
+            {
+                return @delegate.Invoke(ref wpic, Define.WEBP_DECODER_ABI_VERSION);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPPictureInitInternal' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Colorspace conversion function to import RGB samples.</summary>
@@ -265,9 +281,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>Returns 0 in case of memory error.</returns>
         public int WebPPictureImportBGR(ref WebPPicture wpic, IntPtr bgr, int stride)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPPictureImportAuto)this._methods["WebPPictureImportBGR"];
-            return @delegate.Invoke(ref wpic, bgr, stride);
+            if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportBGR", out var @delegate))
+            {
+                return @delegate.Invoke(ref wpic, bgr, stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPPictureImportBGR' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>
@@ -279,9 +297,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns></returns>
         public int WebPPictureImportBGRA(ref WebPPicture wpic, IntPtr rgba, int stride)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPPictureImportAuto)this._methods["WebPPictureImportBGRA"];
-            return @delegate.Invoke(ref wpic, rgba, stride);
+            if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportBGRA", out var @delegate))
+            {
+                return @delegate.Invoke(ref wpic, rgba, stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPPictureImportBGRA' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Colorspace conversion function to import RGB samples.</summary>
@@ -291,9 +311,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>Returns 0 in case of memory error.</returns>
         public int WebPPictureImportRGB(ref WebPPicture wpic, IntPtr rgb, int stride)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPPictureImportAuto)this._methods["WebPPictureImportRGB"];
-            return @delegate.Invoke(ref wpic, rgb, stride);
+            if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportRGB", out var @delegate))
+            {
+                return @delegate.Invoke(ref wpic, rgb, stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPPictureImportRGB' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Colorspace conversion function to import RGBA samples.</summary>
@@ -303,9 +325,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>Returns 0 in case of memory error.</returns>
         public int WebPPictureImportRGBA(ref WebPPicture wpic, IntPtr rgba, int stride)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPPictureImportAuto)this._methods["WebPPictureImportRGBA"];
-            return @delegate.Invoke(ref wpic, rgba, stride);
+            if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportRGBA", out var @delegate))
+            {
+                return @delegate.Invoke(ref wpic, rgba, stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPPictureImportRGBA' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Colorspace conversion function to import BGRX samples.</summary>
@@ -315,9 +339,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>Returns 0 in case of memory error.</returns>
         public int WebPPictureImportBGRX(ref WebPPicture wpic, IntPtr bgrx, int stride)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPPictureImportAuto)this._methods["WebPPictureImportBGRX"];
-            return @delegate.Invoke(ref wpic, bgrx, stride);
+            if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportBGRX", out var @delegate))
+            {
+                return @delegate.Invoke(ref wpic, bgrx, stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPPictureImportBGRX' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Compress to webp format</summary>
@@ -326,9 +352,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>Returns 0 in case of error, 1 otherwise. In case of error, picture->error_code is updated accordingly.</returns>
         public int WebPEncode(ref WebPConfig config, ref WebPPicture picture)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPEncode)this._methods["WebPEncode"];
-            return @delegate.Invoke(ref config, ref picture);
+            if (this.TryGetFunction<NativeDelegates.WebPEncode>("WebPEncode", out var @delegate))
+            {
+                return @delegate.Invoke(ref config, ref picture);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPEncode' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Release the memory allocated by WebPPictureAlloc() or WebPPictureImport*()
@@ -337,9 +365,12 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="picture">Picture struct</param>
         public void WebPPictureFree(ref WebPPicture picture)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPPictureFree)this._methods["WebPPictureFree"];
-            @delegate.Invoke(ref picture);
+            if (this.TryGetFunction<NativeDelegates.WebPPictureFree>("WebPPictureFree", out var @delegate))
+            {
+                @delegate.Invoke(ref picture);
+                return;
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPPictureFree' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Validate the WebP image header and retrieve the image height and width. Pointers *width and *height can be passed NULL if deemed irrelevant</summary>
@@ -350,9 +381,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>1 if success, otherwise error code returned in the case of (a) formatting error(s).</returns>
         public int WebPGetInfo(IntPtr data, int data_size, out int width, out int height)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPGetInfo)this._methods["WebPGetInfo"];
-            return @delegate.Invoke(data, (UIntPtr)data_size, out width, out height);
+            if (this.TryGetFunction<NativeDelegates.WebPGetInfo>("WebPGetInfo", out var @delegate))
+            {
+                return @delegate.Invoke(data, (UIntPtr)data_size, out width, out height);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPGetInfo' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Decode WEBP image pointed to by *data and returns BGR samples into a pre-allocated buffer</summary>
@@ -362,11 +395,13 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="output_buffer_size">Size of allocated buffer</param>
         /// <param name="output_stride">Specifies the distance between scanlines</param>
         /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
-        public int WebPDecodeBGRInto(IntPtr data, int data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        public int WebPDecodeBGRInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPDecodeBGRInto)this._methods["WebPDecodeBGRInto"];
-            return @delegate.Invoke(data, (UIntPtr)data_size, output_buffer, output_buffer_size, output_stride);
+            if (this.TryGetFunction<NativeDelegates.WebPDecodeBGRInto>("WebPDecodeBGRInto", out var @delegate))
+            {
+                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPDecodeBGRInto' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Initialize the configuration as empty. This function must always be called first, unless WebPGetFeatures() is to be called.</summary>
@@ -374,9 +409,11 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>False in case of mismatched version.</returns>
         public int WebPInitDecoderConfig(ref WebPDecoderConfig webPDecoderConfig)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPInitDecoderConfigInternal)this._methods["WebPInitDecoderConfigInternal"];
-            return @delegate.Invoke(ref webPDecoderConfig, WEBP_DECODER_ABI_VERSION);
+            if (this.TryGetFunction<NativeDelegates.WebPInitDecoderConfigInternal>("WebPInitDecoderConfigInternal", out var @delegate))
+            {
+                return @delegate.Invoke(ref webPDecoderConfig, Define.WEBP_DECODER_ABI_VERSION);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPInitDecoderConfigInternal' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Decodes the full data at once, taking 'config' into account.</summary>
@@ -386,18 +423,23 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>VP8_STATUS_OK if the decoding was successful</returns>
         public VP8StatusCode WebPDecode(IntPtr data, int data_size, ref WebPDecoderConfig webPDecoderConfig)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPDecode)this._methods["WebPDecode"];
-            return @delegate.Invoke(data, (UIntPtr)data_size, ref webPDecoderConfig);
+            if (this.TryGetFunction<NativeDelegates.WebPDecode>("WebPDecode", out var @delegate))
+            {
+                return @delegate.Invoke(data, (UIntPtr)data_size, ref webPDecoderConfig);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPDecode' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Free any memory associated with the buffer. Must always be called last. Doesn't free the 'buffer' structure itself.</summary>
         /// <param name="buffer">WebPDecBuffer</param>
         public void WebPFreeDecBuffer(ref WebPDecBuffer buffer)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPFreeDecBuffer)this._methods["WebPFreeDecBuffer"];
-            @delegate.Invoke(ref buffer);
+            if (this.TryGetFunction<NativeDelegates.WebPFreeDecBuffer>("WebPFreeDecBuffer", out var @delegate))
+            {
+                @delegate.Invoke(ref buffer);
+                return;
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPFreeDecBuffer' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Lossy encoding images</summary>
@@ -408,11 +450,13 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="quality_factor">Ranges from 0 (lower quality) to 100 (highest quality). Controls the loss and quality during compression</param>
         /// <param name="output">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
-        public int WebPEncodeBGR(IntPtr bgr, int width, int height, int stride, float quality_factor, out IntPtr output)
+        public int WebPEncodeBGR(IntPtr bgr, int width, int height, int stride, float quality_factor, out IntPtr outputData)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPEncodeAuto)this._methods["WebPEncodeBGR"];
-            return @delegate.Invoke(bgr, width, height, stride, quality_factor, out output);
+            if (this.TryGetFunction<NativeDelegates.WebPEncodeAuto>("WebPEncodeBGR", out var @delegate))
+            {
+                return @delegate.Invoke(bgr, width, height, stride, quality_factor, out outputData);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPEncodeBGR' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Lossy encoding images</summary>
@@ -424,11 +468,13 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="output">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
-        public int WebPEncodeRGB(IntPtr rgb, int width, int height, int stride, float quality_factor, out IntPtr output)
+        public int WebPEncodeRGB(IntPtr rgb, int width, int height, int stride, float quality_factor, out IntPtr outputData)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPEncodeAuto)this._methods["WebPEncodeRGB"];
-            return @delegate.Invoke(rgb, width, height, stride, quality_factor, out output);
+            if (this.TryGetFunction<NativeDelegates.WebPEncodeAuto>("WebPEncodeRGB", out var @delegate))
+            {
+                return @delegate.Invoke(rgb, width, height, stride, quality_factor, out outputData);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPEncodeRGB' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Lossy encoding images</summary>
@@ -440,11 +486,13 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="output">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
-        public int WebPEncodeBGRA(IntPtr bgra, int width, int height, int stride, float quality_factor, out IntPtr output)
+        public int WebPEncodeBGRA(IntPtr bgra, int width, int height, int stride, float quality_factor, out IntPtr outputData)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPEncodeAuto)this._methods["WebPEncodeBGRA"];
-            return @delegate.Invoke(bgra, width, height, stride, quality_factor, out output);
+            if (this.TryGetFunction<NativeDelegates.WebPEncodeAuto>("WebPEncodeBGRA", out var @delegate))
+            {
+                return @delegate.Invoke(bgra, width, height, stride, quality_factor, out outputData);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPEncodeBGRA' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Lossy encoding images</summary>
@@ -456,11 +504,13 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="output">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
-        public int WebPEncodeRGBA(IntPtr rgba, int width, int height, int stride, float quality_factor, out IntPtr output)
+        public int WebPEncodeRGBA(IntPtr rgba, int width, int height, int stride, float quality_factor, out IntPtr outputData)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPEncodeAuto)this._methods["WebPEncodeRGBA"];
-            return @delegate.Invoke(rgba, width, height, stride, quality_factor, out output);
+            if (this.TryGetFunction<NativeDelegates.WebPEncodeAuto>("WebPEncodeRGBA", out var @delegate))
+            {
+                return @delegate.Invoke(rgba, width, height, stride, quality_factor, out outputData);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPEncodeRGBA' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Lossless encoding images pointed to by *data in WebP format</summary>
@@ -470,11 +520,13 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="output">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
-        public int WebPEncodeLosslessBGR(IntPtr bgr, int width, int height, int stride, out IntPtr output)
+        public int WebPEncodeLosslessBGR(IntPtr bgr, int width, int height, int stride, out IntPtr outputData)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPEncodeLosslessAuto)this._methods["WebPEncodeLosslessBGR"];
-            return @delegate.Invoke(bgr, width, height, stride, out output);
+            if (this.TryGetFunction<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessBGR", out var @delegate))
+            {
+                return @delegate.Invoke(bgr, width, height, stride, out outputData);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPEncodeLosslessBGR' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Lossless encoding images pointed to by *data in WebP format</summary>
@@ -484,11 +536,13 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="output">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
-        public int WebPEncodeLosslessBGRA(IntPtr bgra, int width, int height, int stride, out IntPtr output)
+        public int WebPEncodeLosslessBGRA(IntPtr bgra, int width, int height, int stride, out IntPtr outputData)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPEncodeLosslessAuto)this._methods["WebPEncodeLosslessBGRA"];
-            return @delegate.Invoke(bgra, width, height, stride, out output);
+            if (this.TryGetFunction<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessBGRA", out var @delegate))
+            {
+                return @delegate.Invoke(bgra, width, height, stride, out outputData);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPEncodeLosslessBGRA' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Lossless encoding images pointed to by *data in WebP format</summary>
@@ -498,11 +552,13 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="output">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
-        public int WebPEncodeLosslessRGB(IntPtr rgb, int width, int height, int stride, out IntPtr output)
+        public int WebPEncodeLosslessRGB(IntPtr rgb, int width, int height, int stride, out IntPtr outputData)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPEncodeLosslessAuto)this._methods["WebPEncodeLosslessRGB"];
-            return @delegate.Invoke(rgb, width, height, stride, out output);
+            if (this.TryGetFunction<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessRGB", out var @delegate))
+            {
+                return @delegate.Invoke(rgb, width, height, stride, out outputData);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPEncodeLosslessRGB' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Lossless encoding images pointed to by *data in WebP format</summary>
@@ -513,38 +569,47 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <param name="output">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
-        public int WebPEncodeLosslessRGBA(IntPtr rgba, int width, int height, int stride, out IntPtr output)
+        public int WebPEncodeLosslessRGBA(IntPtr rgba, int width, int height, int stride, out IntPtr outputData)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPEncodeLosslessAuto)this._methods["WebPEncodeLosslessRGBA"];
-            return @delegate.Invoke(rgba, width, height, stride, out output);
+            if (this.TryGetFunction<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessRGBA", out var @delegate))
+            {
+                return @delegate.Invoke(rgba, width, height, stride, out outputData);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPEncodeLosslessRGBA' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Releases memory returned by the WebPEncode</summary>
         /// <param name="p">Pointer to memory</param>
-        public void WebPFree(IntPtr p)
+        public void WebPFree(IntPtr pointer)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPFree)this._methods["WebPFree"];
-            @delegate.Invoke(p);
+            if (this.TryGetFunction<NativeDelegates.WebPFree>("WebPFree", out var @delegate))
+            {
+                @delegate.Invoke(pointer);
+                return;
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPFree' function from the library. Wrong library or wrong version?");
         }
 
-        /// <summary>Get the webp version library</summary>
+        /// <summary>Get the webp decoder version library</summary>
         /// <returns>8bits for each of major/minor/revision packet in integer. E.g: v2.5.7 is 0x020507</returns>
-        public object WebPGetDecoderVersion2()
+        public int WebPGetEncoderVersion()
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPGetDecoderVersion)this._methods["WebPGetDecoderVersion"];
-            return (object)@delegate.Invoke();
+            if (this.TryGetFunction<NativeDelegates.WebPGetVersion>("WebPGetEncoderVersion", out var @delegate))
+            {
+                return @delegate.Invoke();
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPGetEncoderVersion' function from the library. Wrong library or wrong version?");
         }
 
-        /// <summary>Get the webp version library</summary>
+        /// <summary>Get the webp encoder version library</summary>
         /// <returns>8bits for each of major/minor/revision packet in integer. E.g: v2.5.7 is 0x020507</returns>
         public int WebPGetDecoderVersion()
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPGetDecoderVersion)this._methods["WebPGetDecoderVersion"];
-            return (int)@delegate.Invoke();
+            if (this.TryGetFunction<NativeDelegates.WebPGetVersion>("WebPGetDecoderVersion", out var @delegate))
+            {
+                return @delegate.Invoke();
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPGetDecoderVersion' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>Compute PSNR, SSIM or LSIM distortion metric between two pictures.</summary>
@@ -555,23 +620,28 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// <returns>False in case of error (src and ref don't have same dimension, ...)</returns>
         public int WebPPictureDistortion(ref WebPPicture srcPicture, ref WebPPicture refPicture, int metric_type, IntPtr pResult)
         {
-            this.AssertLibraryCallFailure();
-            var @delegate = (NativeDelegates.WebPPictureDistortion)this._methods["WebPPictureDistortion"];
-            return @delegate.Invoke(ref srcPicture, ref refPicture, metric_type, pResult);
+            if (this.TryGetFunction<NativeDelegates.WebPPictureDistortion>("WebPPictureDistortion", out var @delegate))
+            {
+                return @delegate.Invoke(ref srcPicture, ref refPicture, metric_type, pResult);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPPictureDistortion' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>
-        /// Invoke a function of the library. (Warning: Low Performance because of <see cref="Delegate.DynamicInvoke(object[])"/>)
+        /// Dynamically invoke a function of the library.
         /// </summary>
         /// <param name="functionName">The name of the function</param>
         /// <param name="args">Arguments for the function</param>
         /// <returns></returns>
-        public object Invoke(string functionName, params object[] args)
+        public object DynamicInvoke(string functionName, params object[] args)
         {
             this.AssertLibraryCallFailure();
-            if (this._methods.TryGetValue(functionName, out var delega))
+            if (this._functionPointer.TryGetValue(functionName, out var pointer))
             {
-                return delega.DynamicInvoke(args);
+                Delegate func = Marshal.GetDelegateForFunctionPointer(pointer, typeof(Delegate));
+                var result = func.DynamicInvoke(args);
+                func = null;
+                return result;
             }
             else
             {
@@ -581,8 +651,10 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
                     throw new EntryPointNotFoundException($"Function '{functionName}' not found");
 
                 Delegate function = Marshal.GetDelegateForFunctionPointer(p, typeof(Delegate));
-                this._methods.TryAdd(functionName, function);
-                return function.DynamicInvoke(args);
+                this._functionPointer.TryAdd(functionName, p);
+                var result = function.DynamicInvoke(args);
+                function = null;
+                return result;
             }
         }
 
@@ -598,32 +670,32 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         public bool TryGetFunction<TDelegate>(string functionName, out TDelegate function) where TDelegate : Delegate
         {
             this.AssertLibraryCallFailure();
-            if (this._methods.TryGetValue(functionName, out var @delegate))
+
+            Type delegateType = typeof(TDelegate);
+
+            if ((this._methods.TryGetValue(delegateType, out var outdelegate)) && (outdelegate is TDelegate result))
             {
-                if (@delegate is TDelegate result)
-                {
-                    function = result;
-                    return true;
-                }
-                else
-                {
-                    function = default;
-                    return false;
-                }
+                function = result;
+                return true;
             }
             else
             {
-                var e = FindFunctionPointers<TDelegate>(ref this.libraryHandle, functionName);
-                IntPtr p = UnsafeNativeMethods.GetProcAddress(this.libraryHandle, functionName);
-                // Failure is a common case, especially for adaptive code.
-                if (p == IntPtr.Zero)
+                IntPtr p;
+                if (!this._functionPointer.TryGetValue(functionName, out p))
                 {
-                    function = default;
-                    return false;
+                    p = UnsafeNativeMethods.GetProcAddress(this.libraryHandle, functionName);
+                    // Failure is a common case, especially for adaptive code.
+                    if (p == IntPtr.Zero)
+                    {
+                        function = default;
+                        return false;
+                    }
+
+                    this._functionPointer.TryAdd(functionName, p);
                 }
 
-                TDelegate foundFunction = (TDelegate)Marshal.GetDelegateForFunctionPointer(p, typeof(TDelegate));
-                this._methods.TryAdd(functionName, foundFunction);
+                TDelegate foundFunction = (TDelegate)Marshal.GetDelegateForFunctionPointer(p, delegateType);
+                this._methods.TryAdd(delegateType, foundFunction);
                 function = foundFunction;
                 return true;
             }
@@ -634,10 +706,10 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         /// </summary>
         /// <param name="functionName">The name of the function</param>
         /// <returns>Return a boolean whether the given function name is existed or not.</returns>
-        public bool IsMethodExists(string functionName)
+        public bool IsFunctionExists(string functionName)
         {
             this.AssertLibraryCallFailure();
-            if (this._methods.TryGetValue(functionName, out var throwAway))
+            if (this._functionPointer.TryGetValue(functionName, out var throwAway))
             {
                 return true;
             }
@@ -648,21 +720,27 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
                 if (p == IntPtr.Zero)
                     return false;
 
-                this._methods.TryAdd(functionName, Marshal.GetDelegateForFunctionPointer(p, typeof(Delegate)));
+                this._functionPointer.TryAdd(functionName, p);
                 return true;
             }
         }
 
-        private static TDelegate AssertFunctionLoadFailure<TDelegate>(ref SafeLibraryHandle handle, string functionName, bool throwOnNotFound = true) where TDelegate : Delegate
+        private void AssertFunctionLoadFailure<TDelegate>(string functionName, bool throwOnNotFound = true) where TDelegate : Delegate
         {
-            TDelegate func_delegate = FindFunctionPointers<TDelegate>(ref handle, functionName);
-            if (throwOnNotFound && (func_delegate == null))
+            TDelegate func_delegate;
+            if (this.TryGetFunction<TDelegate>(functionName, out func_delegate))
             {
-                handle.Close();
-                handle.Dispose();
-                throw new FileLoadException($"Function '{(typeof(TDelegate)).ToString()}' not found in the library. Wrong library or wrong version?");
+                this._methods.TryAdd(typeof(TDelegate), func_delegate);
             }
-            return func_delegate;
+            else
+            {
+                if (throwOnNotFound)
+                {
+                    this.libraryHandle.Close();
+                    this.libraryHandle.Dispose();
+                    throw new FileLoadException($"Function '{(typeof(TDelegate)).ToString()}' not found in the library. Wrong library or wrong version?");
+                }
+            }
         }
 
         private void AssertLibraryCallFailure()
@@ -695,6 +773,9 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
             return (TDelegate)Marshal.GetDelegateForFunctionPointer(p, typeof(TDelegate));
         }
 
+        /// <summary>
+        /// Releases all resources used by the <see cref="Libwebp"/> class and unload the unmanaged library.
+        /// </summary>
         public void Dispose()
         {
             if (this.libraryHandle == null || this.libraryHandle.IsClosed || this.libraryHandle.IsInvalid)

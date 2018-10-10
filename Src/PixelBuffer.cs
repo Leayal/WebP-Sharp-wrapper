@@ -4,6 +4,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Media;
 using System.Runtime.InteropServices;
 using System.Reflection;
+using System.Threading;
 
 namespace WebPWrapper.WPF
 {
@@ -12,14 +13,13 @@ namespace WebPWrapper.WPF
         private static readonly PropertyInfo PixelFormat_HasAlphaProperty = typeof(PixelFormat).GetProperty("HasAlpha", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         private byte[] _buffer;
         private bool? _hasAlpha;
-        private bool _working;
+        private long _working;
         private int length, _stride, _pixelWidth, _pixelHeight;
         private PixelFormat _pixelFormat;
         private GCHandle _handle;
         private bool _directAccessMode;
         private WriteableBitmap directAccessTarget;
         private ReadOnlyCollection<byte> publicBuffer;
-
 
         /// <summary>
         /// Copy BackBuffer from a <see cref="BitmapSource"/> instance.
@@ -92,7 +92,7 @@ namespace WebPWrapper.WPF
 
                 this._hasAlpha = null;
                 this._disposed = false;
-                this._working = false;
+                this._working = 0;
 
                 this._pixelFormat = bitmap.Format;
                 this._pixelWidth = bitmap.PixelWidth;
@@ -111,7 +111,7 @@ namespace WebPWrapper.WPF
         {
             this._hasAlpha = null;
             this._disposed = false;
-            this._working = false;
+            this._working = 0;
 
             this._pixelFormat = bitmap.Format;
             this._pixelWidth = bitmap.PixelWidth;
@@ -194,24 +194,35 @@ namespace WebPWrapper.WPF
             }
         }
 
-        private bool? _doesItHaveAndUseAlpha = null;
+        private bool _doesItHaveAndUseAlpha;
 
         private bool DoesItHaveAndUseAlpha()
         {
-            if (this._doesItHaveAndUseAlpha.HasValue)
-                return _doesItHaveAndUseAlpha.Value;
-            if (this._working)
-                throw new InvalidOperationException("I'm working on searching for alpha");
-            this._working = true;
-            if (this.IsItPossibleToContainsAlpha() && this.DoesItReallyUseAlpha())
+            if (Interlocked.Exchange(ref this._working, 1) == 0)
             {
-                this._doesItHaveAndUseAlpha = true;
-                return true;
+                if (this.IsItPossibleToContainsAlpha() && this.DoesItReallyUseAlpha())
+                {
+                    this._doesItHaveAndUseAlpha = true;
+                    Interlocked.Increment(ref this._working);
+                    return true;
+                }
+                else
+                {
+                    this._doesItHaveAndUseAlpha = false;
+                    Interlocked.Increment(ref this._working);
+                    return false;
+                }
             }
             else
             {
-                this._doesItHaveAndUseAlpha = false;
-                return false;
+                if (Interlocked.Read(ref this._working) == 2)
+                {
+                    return _doesItHaveAndUseAlpha;
+                }
+                else
+                {
+                    throw new InvalidOperationException("I'm working on searching for alpha");
+                }
             }
         }
 

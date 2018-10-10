@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WebPWrapper.WPF.UnmanagedLibrary;
+using WebPWrapper.WPF.LowLevel;
 
 namespace WebPWrapper.WPF
 {
     /// <summary>Options for WebP encoder</summary>
     public sealed class EncoderOptions
     {
-        private CompressionType _compressionType;
+        private readonly CompressionType _compressionType;
         private WebPPreset? _preset;
 
         /// <summary>Init new option instance</summary>

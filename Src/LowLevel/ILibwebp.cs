@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
-namespace WebPWrapper.WPF
+namespace WebPWrapper.WPF.LowLevel
 {
     /// <summary>
-    /// Provides an interface for managed function wrapper for unmanaged libwebp library
+    /// Provides an interface to use unmanaged libwebp library in managed code. USE AT YOUR OWN RISK.
     /// </summary>
     public interface ILibwebp
     {
@@ -116,7 +113,7 @@ namespace WebPWrapper.WPF
         /// <param name="output_buffer_size">Size of allocated buffer</param>
         /// <param name="output_stride">Specifies the distance between scanlines</param>
         /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
-        int WebPDecodeBGRInto(IntPtr data, int data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
+        int WebPDecodeBGRInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
 
         /// <summary>Initialize the configuration as empty. This function must always be called first, unless WebPGetFeatures() is to be called.</summary>
         /// <param name="webPDecoderConfig">Configuration struct</param>
@@ -218,9 +215,13 @@ namespace WebPWrapper.WPF
         /// <param name="p">Pointer to memory</param>
         void WebPFree(IntPtr p);
 
-        /// <summary>Get the webp version library</summary>
+        /// <summary>Get the webp decoder version library</summary>
         /// <returns>8bits for each of major/minor/revision packet in integer. E.g: v2.5.7 is 0x020507</returns>
         int WebPGetDecoderVersion();
+
+        /// <summary>Get the webp encoder version library</summary>
+        /// <returns>8bits for each of major/minor/revision packet in integer. E.g: v2.5.7 is 0x020507</returns>
+        int WebPGetEncoderVersion();
 
         /// <summary>Compute PSNR, SSIM or LSIM distortion metric between two pictures.</summary>
         /// <param name="srcPicture">Picture to measure</param>
@@ -231,18 +232,18 @@ namespace WebPWrapper.WPF
         int WebPPictureDistortion(ref WebPPicture srcPicture, ref WebPPicture refPicture, int metric_type, IntPtr pResult);
 
         /// <summary>
-        /// Invoke a function of the library. (Warning: Low Performance because of <see cref="Delegate.DynamicInvoke(object[])"/>)
+        /// Dynamically invoke a function of the library. (Warning: Low Performance because of <see cref="Delegate.DynamicInvoke(object[])"/>)
         /// </summary>
         /// <param name="functionName">The name of the function</param>
         /// <param name="args">Arguments for the function</param>
         /// <returns></returns>
-        object Invoke(string functionName, params object[] args);
+        object DynamicInvoke(string functionName, params object[] args);
 
         /// <summary>
         /// Return a boolean whether the given function name is existed or not.
         /// </summary>
         /// <param name="functionName">The name of the function</param>
         /// <returns>Return a boolean whether the given function name is existed or not.</returns>
-        bool IsMethodExists(string functionName);
+        bool IsFunctionExists(string functionName);
     }
 }

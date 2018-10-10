@@ -1,7 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using WebPWrapper.WPF.UnmanagedLibrary;
+using System.Threading;
+using WebPWrapper.WPF.LowLevel;
 
 namespace WebPWrapper.WPF
 {
@@ -58,7 +59,17 @@ namespace WebPWrapper.WPF
         /// <summary>
         /// Get the image info
         /// </summary>
-        public WebPHeader Info => this.header;
+        public WebPHeader Info
+        {
+            get
+            {
+                if (Interlocked.Read(ref this._disposed) == 0)
+                {
+                    return this.header;
+                }
+                throw new ObjectDisposedException("WebPImage");
+            }
+        }
 
         /// <summary>
         /// Get the stream which contains the WebP image data
@@ -67,25 +78,26 @@ namespace WebPWrapper.WPF
         {
             get
             {
-                if (this._disposed)
-                    throw new ObjectDisposedException("WebPImage");
-                return this._content;
+                if (Interlocked.Read(ref this._disposed) == 0)
+                {
+                    return this._content;
+                }
+                throw new ObjectDisposedException("WebPImage");
             }
         }
 
-        private bool _disposed;
+        private long _disposed;
         /// <summary>
         /// This will call Dispose() on <see cref="WebPContentStream"/> of this instance. Just the same as using <see cref="Content"/>.Dispose().
         /// </summary>
         public void Dispose()
         {
-            if (this._disposed) return;
-            this._disposed = true;
+            if (Interlocked.Exchange(ref this._disposed, 1) == 0)
+            {
+                this._content.Dispose();
 
-            this._content.Dispose();
-
-            this.header = null;
-            this._content = null;
+                this.header = null;
+            }
         }
     }
 }

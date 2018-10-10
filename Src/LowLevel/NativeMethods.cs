@@ -1,15 +1,14 @@
 ﻿using System;
-using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using System.Security;
 
-namespace WebPWrapper.WPF.UnmanagedLibrary
+namespace WebPWrapper.WPF.LowLevel
 {
-    // [SuppressUnmanagedCodeSecurity]
+    [SuppressUnmanagedCodeSecurity]
     static class NativeDelegates
     {
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int WebPGetDecoderVersion();
+        internal delegate int WebPGetVersion();
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate int WebPConfigInitInternal(ref WebPConfig config, WebPPreset preset, float quality, int WEBP_DECODER_ABI_VERSION);
@@ -51,13 +50,13 @@ namespace WebPWrapper.WPF.UnmanagedLibrary
         internal delegate void WebPFreeDecBuffer(ref WebPDecBuffer buffer);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int WebPEncodeAuto([In] IntPtr bgr, int width, int height, int stride, float quality_factor, out IntPtr output);
+        internal delegate int WebPEncodeAuto([In] IntPtr pixelData, int width, int height, int stride, float quality_factor, out IntPtr outputData);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int WebPEncodeLosslessAuto([In] IntPtr bgr, int width, int height, int stride, out IntPtr output);
+        internal delegate int WebPEncodeLosslessAuto([In] IntPtr pixelData, int width, int height, int stride, out IntPtr outputData);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void WebPFree(IntPtr p);
+        internal delegate void WebPFree(IntPtr pointer);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate int WebPPictureDistortion(ref WebPPicture srcPicture, ref WebPPicture refPicture, int metric_type, IntPtr pResult);

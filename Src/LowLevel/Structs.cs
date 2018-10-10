@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace WebPWrapper.WPF
+namespace WebPWrapper.WPF.LowLevel
 {
     /// <summary>Features gathered from the bitstream</summary>
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct WebPBitstreamFeatures
     {
         /// <summary>Width in pixels, as read from the bitstream.</summary>
@@ -22,12 +18,12 @@ namespace WebPWrapper.WPF
         /// <summary>0 = undefined (/mixed), 1 = lossy, 2 = lossless</summary>
         public int format;
         /// <summary>Padding for later use.</summary>
-        [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 5, ArraySubType = UnmanagedType.U4)]
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5, ArraySubType = UnmanagedType.U4)]
         private uint[] pad;
     };
 
     /// <summary>Compression parameters.</summary>
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct WebPConfig
     {
         /// <summary>Lossless encoding (0=lossy(default), 1=lossless).</summary>
@@ -89,7 +85,7 @@ namespace WebPWrapper.WPF
     };
 
     /// <summary>Main exchange structure (input samples, output bytes, statistics)</summary>
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct WebPPicture
     {
         /// <summary>Main flag for encoder selecting between ARGB or YUV input. Recommended to use ARGB input (*argb, argb_stride) for lossless, and YUV input (*y, *u, *v, etc.) for lossy</summary>
@@ -115,14 +111,14 @@ namespace WebPWrapper.WPF
         /// <summary>stride of the alpha plane</summary>
         public int a_stride;
         /// <summary>Padding for later use.</summary>
-        [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 2, ArraySubType = UnmanagedType.U4)]
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2, ArraySubType = UnmanagedType.U4)]
         private uint[] pad1;
         /// <summary>Pointer to argb (32 bit) plane.</summary>
         public IntPtr argb;
         /// <summary>This is stride in pixels units, not bytes.</summary>
         public int argb_stride;
         /// <summary>Padding for later use.</summary>
-        [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 3, ArraySubType = UnmanagedType.U4)]
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3, ArraySubType = UnmanagedType.U4)]
         private uint[] pad2;
         /// <summary>Byte-emission hook, to store compressed bytes as they are ready.</summary>
         public IntPtr writer;
@@ -142,19 +138,19 @@ namespace WebPWrapper.WPF
         /// <summary>this field is free to be set to any value and used during callbacks (like progress-report e.g.).</summary>
         public IntPtr user_data;
         /// <summary>Padding for later use.</summary>
-        [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 13, ArraySubType = UnmanagedType.U4)]
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 13, ArraySubType = UnmanagedType.U4)]
         private uint[] pad3;
         /// <summary>Row chunk of memory for yuva planes</summary>
         private IntPtr memory_;
         /// <summary>row chunk of memory for argb planes</summary>
         private IntPtr memory_argb_;
         /// <summary>Padding for later use.</summary>
-        [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 2, ArraySubType = UnmanagedType.U4)]
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2, ArraySubType = UnmanagedType.U4)]
         private uint[] pad4;
     };
 
     /// <summary>Structure for storing auxiliary statistics (mostly for lossy encoding).</summary>
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct WebPAuxStats
     {
         /// <summary>Final size</summary>
@@ -254,7 +250,7 @@ namespace WebPWrapper.WPF
         private uint[] pad;
     };
 
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct WebPDecoderConfig
     {
         /// <summary>Immutable bitstream features (optional)</summary>
@@ -266,7 +262,7 @@ namespace WebPWrapper.WPF
     }
 
     /// <summary>Output buffer</summary>
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct WebPDecBuffer
     {
         /// <summary>Colorspace.</summary>
@@ -292,7 +288,7 @@ namespace WebPWrapper.WPF
     }
 
     /// <summary>Union of buffer parameters</summary>
-    [StructLayoutAttribute(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Explicit)]
     public struct RGBA_YUVA_Buffer
     {
         [FieldOffsetAttribute(0)]
@@ -302,7 +298,7 @@ namespace WebPWrapper.WPF
         public WebPYUVABuffer YUVA;
     }
 
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct WebPYUVABuffer
     {
         /// <summary>Pointer to luma samples</summary>
@@ -332,7 +328,7 @@ namespace WebPWrapper.WPF
     }
 
     /// <summary>Generic structure for describing the output sample buffer.</summary>
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct WebPRGBABuffer
     {
         /// <summary>pointer to RGBA samples.</summary>
@@ -344,7 +340,7 @@ namespace WebPWrapper.WPF
     }
 
     /// <summary>Decoding options</summary>
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct WebPDecoderOptions
     {
         /// <summary>if true, skip the in-loop filtering.</summary>
@@ -388,7 +384,7 @@ namespace WebPWrapper.WPF
     };
 
     /*
-    [StructLayoutAttribute(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)]
     struct WebPIDecoder
     {
         DecState state_;         // current decoding state

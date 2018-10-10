@@ -2,49 +2,56 @@
 /// Wrapper for WebP format in C#. (GPL) Jose M. Piñeiro
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 /// Decompress Functions:
-/// Bitmap Load(string pathFileName) - Load a WebP file in bitmap.
-/// Bitmap Decode(byte[] rawWebP) - Decode WebP data (rawWebP) to bitmap.
-/// Bitmap Decode(byte[] rawWebP, WebPDecoderOptions options) - Decode WebP data (rawWebP) to bitmap using 'options'.
-/// Bitmap GetThumbnailFast(byte[] rawWebP, int width, int height) - Get a thumbnail from WebP data (rawWebP) with dimensions 'width x height'. Fast mode.
-/// Bitmap GetThumbnailQuality(byte[] rawWebP, int width, int height) - Fast get a thumbnail from WebP data (rawWebP) with dimensions 'width x height'. Quality mode.
+/// BitmapSource Load(string pathFileName) - Load a WebP file in bitmap.
+/// BitmapSource Decode(byte[] rawWebP) - Decode WebP data (rawWebP) to bitmap.
+/// BitmapSource Decode(byte[] rawWebP, WebPDecoderOptions options) - Decode WebP data (rawWebP) to bitmap using 'options'.
+/// BitmapSource GetThumbnailFast(byte[] rawWebP, int width, int height) - Get a thumbnail from WebP data (rawWebP) with dimensions 'width x height'. Fast mode.
+/// BitmapSource GetThumbnailQuality(byte[] rawWebP, int width, int height) - Fast get a thumbnail from WebP data (rawWebP) with dimensions 'width x height'. Quality mode.
 /// 
 /// Compress Functions:
-/// Save(Bitmap bmp, string pathFileName, int quality = 75) - Save bitmap with quality lost to WebP file. Opcionally select 'quality'.
-/// byte[] EncodeLossy(Bitmap bmp, int quality = 75) - Encode bitmap with quality lost to WebP byte array. Opcionally select 'quality'.
-/// byte[] EncodeLossy(Bitmap bmp, int quality, int speed, bool info = false) - Encode bitmap with quality lost to WebP byte array. Select 'quality' and 'speed'. 
-/// byte[] EncodeLossless(Bitmap bmp) - Encode bitmap without quality lost to WebP byte array. 
-/// byte[] EncodeLossless(Bitmap bmp, int speed, bool info = false) - Encode bitmap without quality lost to WebP byte array. Select 'speed'. 
-/// byte[] EncodeNearLossless(Bitmap bmp, int quality, int speed = 9, bool info = false) - Encode bitmap with nearlossless to WebP byte array. Select 'quality' and 'speed'. 
+/// Save(BitmapSource bmp, string pathFileName, int quality = 75) - Save bitmap with quality lost to WebP file. Opcionally select 'quality'.
+/// WebPImage EncodeLossy(BitmapSource bmp, int quality = 75) - Encode bitmap with quality lost to WebP byte array. Opcionally select 'quality'.
+/// WebPImage EncodeLossy(BitmapSource bmp, int quality, int speed, bool info = false) - Encode bitmap with quality lost to WebP byte array. Select 'quality' and 'speed'. 
+/// WebPImage EncodeLossless(BitmapSource bmp) - Encode bitmap without quality lost to WebP byte array. 
+/// WebPImage EncodeLossless(BitmapSource bmp, int speed, bool info = false) - Encode bitmap without quality lost to WebP byte array. Select 'speed'. 
+/// WebPImage EncodeNearLossless(BitmapSource bmp, int quality, int speed = 9, bool info = false) - Encode bitmap with nearlossless to WebP byte array. Select 'quality' and 'speed'. 
 /// 
 /// Another functions:
-/// string GetVersion() - Get the library version
+/// Version GetVersion() - Get the library version
 /// GetInfo(byte[] rawWebP, out int width, out int height, out bool has_alpha, out bool has_animation, out string format) - Get information of WEBP data
 /// float[] PictureDistortion(Bitmap source, Bitmap reference, int metric_type) - Get PSNR, SSIM or LSIM distortion metric between two pictures
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using WebPWrapper.WPF.Buffer;
 using WebPWrapper.WPF.Helper;
-using WebPWrapper.WPF.UnmanagedLibrary;
+using WebPWrapper.WPF.LowLevel;
 
 namespace WebPWrapper.WPF
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public sealed class WebP : IDisposable
     {
-        internal readonly ChunkPool ManagedChunkPool;
-        internal readonly Libwebp library;
+        internal ChunkPool ManagedChunkPool;
+        internal Libwebp library;
+        private EncoderOptions encodeOption;
+        private DecoderOptions decodeOption;
 
+        #region Constructors
         /// <summary>
         /// Create a new WebP instance with default buffer pool size.
         /// </summary>
         /// <remarks>
         /// For backward-compatible only
         /// </remarks>
-        public WebP() : this(4096) { }
+        public WebP() : this(RuntimeValue.DefaultBufferSize) { }
 
         /// <summary>
         /// Create a new WebP instance with given buffer pool size.
@@ -58,14 +65,50 @@ namespace WebPWrapper.WPF
         /// Create a new WebP instance with default buffer pool size.
         /// </summary>
         /// <param name="library_path">The path to libwebp dll file</param>
-        public WebP(string library_path) : this(library_path, 4096) { }
+        public WebP(string library_path) : this(library_path, RuntimeValue.DefaultBufferSize) { }
+
+        /// <summary>
+        /// Create a new WebP instance with default buffer pool size.
+        /// </summary>
+        /// <param name="library_path">The path to libwebp dll file</param>
+        public WebP(string library_path, int bufferBlockSize) : this(library_path, new EncoderOptions(), new DecoderOptions(), bufferBlockSize) { }
+
+        /// <summary>
+        /// Create a new WebP instance with default buffer pool size.
+        /// </summary>
+        /// <param name="library_path">The path to libwebp dll file</param>
+        public WebP(string library_path, EncoderOptions defaultEncodeOptions) : this(library_path, defaultEncodeOptions, RuntimeValue.DefaultBufferSize) { }
+
+        /// <summary>
+        /// Create a new WebP instance with default buffer pool size.
+        /// </summary>
+        /// <param name="library_path">The path to libwebp dll file</param>
+        public WebP(string library_path, DecoderOptions defaultDecodeOptions) : this(library_path, defaultDecodeOptions, RuntimeValue.DefaultBufferSize) { }
+
+        /// <summary>
+        /// Create a new WebP instance with default buffer pool size.
+        /// </summary>
+        /// <param name="library_path">The path to libwebp dll file</param>
+        public WebP(string library_path, EncoderOptions defaultEncodeOptions, int bufferBlockSize) : this(library_path, defaultEncodeOptions, new DecoderOptions(), bufferBlockSize) { }
+
+        /// <summary>
+        /// Create a new WebP instance with default buffer pool size.
+        /// </summary>
+        /// <param name="library_path">The path to libwebp dll file</param>
+        public WebP(string library_path, DecoderOptions defaultDecodeOptions, int bufferBlockSize) : this(library_path, new EncoderOptions(), defaultDecodeOptions, bufferBlockSize) { }
+
+        /// <summary>
+        /// Create a new WebP instance with default buffer pool size.
+        /// </summary>
+        /// <param name="library_path">The path to libwebp dll file</param>
+        public WebP(string library_path, EncoderOptions defaultEncodeOptions, DecoderOptions defaultDecodeOptions) : this(library_path, defaultEncodeOptions, defaultDecodeOptions, RuntimeValue.DefaultBufferSize) { }
 
         /// <summary>
         /// Create a new WebP instance with given buffer pool size.
         /// </summary>
         /// <param name="library_path">The path to libwebp dll file</param>
         /// <param name="bufferBlockSize">The size (in bytes) of each buffer block in the cache pool (for re-using buffer). Set to 0 to disable buffer pool. Size smaller than 1024 will be adjusted to 1024.</param>
-        public WebP(string library_path, int bufferBlockSize)
+        public WebP(string library_path, EncoderOptions defaultEncodeOptions, DecoderOptions defaultDecodeOptions, int bufferBlockSize)
         {
             if (bufferBlockSize < 0)
                 throw new ArgumentException("The size must be non-negative value.");
@@ -76,14 +119,18 @@ namespace WebPWrapper.WPF
             else
                 this.ManagedChunkPool = new ChunkPool(bufferBlockSize);
 
+            this.decodeOption = defaultDecodeOptions;
+            this.encodeOption = defaultEncodeOptions;
+
             this.library = Libwebp.Init(this, library_path);
         }
+        #endregion
 
         #region | Public Decompress Functions |
         /// <summary>Read a WebP file</summary>
         /// <param name="pathFileName">WebP file to load</param>
         /// <returns>Bitmap with the WebP image</returns>
-        public BitmapSource DecodeFile(string pathFileName) => DecodeFile(pathFileName, new DecoderOptions());
+        public BitmapSource DecodeFile(string pathFileName) => DecodeFile(pathFileName, this.decodeOption);
         /// <summary>Read a WebP file (Advanced API)</summary>
         /// <param name="pathFileName">WebP file to load</param>
         /// <param name="options">Decoder options</param>
@@ -112,7 +159,7 @@ namespace WebPWrapper.WPF
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.DecodeFile"); }
         }
 
-        public WriteableBitmap Decode(byte[] webpData) => this.Decode(webpData, new DecoderOptions());
+        public WriteableBitmap Decode(byte[] webpData) => this.Decode(webpData, this.decodeOption);
 
         public WriteableBitmap Decode(byte[] webpData, DecoderOptions options) => this.Decode(webpData, 0, webpData.Length, options);
 
@@ -141,7 +188,7 @@ namespace WebPWrapper.WPF
         /// <returns>Bitmap with the WebP image</returns>
         public WriteableBitmap Decode(IntPtr memoryPointer, int lengthToRead)
         {
-            return Decode(memoryPointer, lengthToRead, new DecoderOptions());
+            return Decode(memoryPointer, lengthToRead, this.decodeOption);
         }
 
         public WriteableBitmap Decode(IntPtr memoryPointer, int lengthToRead, DecoderOptions decodeOptions)
@@ -152,7 +199,7 @@ namespace WebPWrapper.WPF
 
             try
             {
-                
+
                 WebPDecoderConfig config = new WebPDecoderConfig();
                 if (this.library.WebPInitDecoderConfig(ref config) == 0)
                 {
@@ -426,7 +473,7 @@ namespace WebPWrapper.WPF
 
                 //Set compresion parameters
                 if (this.library.WebPConfigInit(ref config, preset, quality) == 0)
-                    throw new Exception("Can´t config preset");
+                    throw new Exception("Can't config preset");
 
                 // Add additional tuning:
                 config.method = speed;
@@ -451,7 +498,7 @@ namespace WebPWrapper.WPF
                     throw new Exception("Bad config parameters");
 
                 if (this.library.WebPPictureInitInternal(ref wpic) != 1)
-                    throw new Exception("Can´t init WebPPictureInit");
+                    throw new Exception("Can't init WebPPictureInit");
 
                 //Put the bitmap componets in wpic
                 pixelBuffer = WebPPictureImportAuto(bmp, ref wpic);
@@ -460,11 +507,29 @@ namespace WebPWrapper.WPF
                 using (WebPFileWriter webPMemoryBuffer = new WebPFileWriter(pathFileName))
                 {
                     Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyFileWriter);
+
+                    // Is this even needed, "somedeed" above is still reference to the delegate. And WebPEncode is a synchronous operation.
+                    // Better safe than sorry?
+                    var preventDelegateFromBeingCollectedButMovingIsOkay = GCHandle.Alloc(somedeed, GCHandleType.Normal);
+
                     wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
-                    //compress the input samples
-                    if (this.library.WebPEncode(ref config, ref wpic) != 1)
-                        throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
+                    try
+                    {
+                        //compress the input samples, synchronous operation
+                        if (this.library.WebPEncode(ref config, ref wpic) != 1)
+                            throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
+                    }
+                    catch
+                    {
+                        throw;
+                    }
+                    finally
+                    {
+                        if (preventDelegateFromBeingCollectedButMovingIsOkay.IsAllocated)
+                            preventDelegateFromBeingCollectedButMovingIsOkay.Free();
+                        somedeed = null;
+                    }
                 }
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossly (File)"); }
@@ -473,6 +538,7 @@ namespace WebPWrapper.WPF
                 //Free memory
                 if (pixelBuffer != null)
                     pixelBuffer.Dispose();
+                pixelBuffer = null;
                 if (wpic.argb != IntPtr.Zero)
                     this.library.WebPPictureFree(ref wpic);
             }
@@ -518,11 +584,29 @@ namespace WebPWrapper.WPF
                 using (WebPFileWriter webPMemoryBuffer = new WebPFileWriter(pathFileName))
                 {
                     Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyFileWriter);
+
+                    // Is this even needed, "somedeed" above is still reference to the delegate. And WebPEncode is a synchronous operation.
+                    // Better safe than sorry?
+                    var preventDelegateFromBeingCollectedButMovingIsOkay = GCHandle.Alloc(somedeed, GCHandleType.Normal);
+
                     wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
-                    //compress the input samples
-                    if (this.library.WebPEncode(ref config, ref wpic) != 1)
-                        throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
+                    try
+                    {
+                        //compress the input samples, synchronous operation
+                        if (this.library.WebPEncode(ref config, ref wpic) != 1)
+                            throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
+                    }
+                    catch
+                    {
+                        throw;
+                    }
+                    finally
+                    {
+                        if (preventDelegateFromBeingCollectedButMovingIsOkay.IsAllocated)
+                            preventDelegateFromBeingCollectedButMovingIsOkay.Free();
+                        somedeed = null;
+                    }
                 }
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeNearLossless"); }
@@ -579,11 +663,29 @@ namespace WebPWrapper.WPF
                 using (WebPFileWriter webPMemoryBuffer = new WebPFileWriter(pathFileName))
                 {
                     Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyFileWriter);
+
+                    // Is this even needed, "somedeed" above is still reference to the delegate. And WebPEncode is a synchronous operation.
+                    // Better safe than sorry?
+                    var preventDelegateFromBeingCollectedButMovingIsOkay = GCHandle.Alloc(somedeed, GCHandleType.Normal);
+
                     wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
-                    //compress the input samples
-                    if (this.library.WebPEncode(ref config, ref wpic) != 1)
-                        throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
+                    try
+                    {
+                        //compress the input samples, synchronous operation
+                        if (this.library.WebPEncode(ref config, ref wpic) != 1)
+                            throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
+                    }
+                    catch
+                    {
+                        throw;
+                    }
+                    finally
+                    {
+                        if (preventDelegateFromBeingCollectedButMovingIsOkay.IsAllocated)
+                            preventDelegateFromBeingCollectedButMovingIsOkay.Free();
+                        somedeed = null;
+                    }
                 }
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossless"); }
@@ -679,13 +781,32 @@ namespace WebPWrapper.WPF
 
                 // Set up a byte-writing method (write-to-memory, in this case)
                 WebPMemoryCopyBuffer webPMemoryBuffer = new WebPMemoryCopyBuffer(this.ManagedChunkPool, false);
+
                 Delegate somedeed = new NativeDelegates.WebPDataWriterCallback(webPMemoryBuffer.MyWriter);
+
+                // Is this even needed, "somedeed" above is still reference to the delegate. And WebPEncode is a synchronous operation.
+                // Better safe than sorry?
+                var preventDelegateFromBeingCollectedButMovingIsOkay = GCHandle.Alloc(somedeed, GCHandleType.Normal);
+
                 wpic.writer = Marshal.GetFunctionPointerForDelegate(somedeed);
 
-                //compress the input samples
-                if (this.library.WebPEncode(ref config, ref wpic) != 1)
-                    throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
-                webPMemoryBuffer.ToReadOnly();
+                try
+                {
+                    //compress the input samples, synchronous operation
+                    if (this.library.WebPEncode(ref config, ref wpic) != 1)
+                        throw new Exception("Encoding error: " + ((WebPEncodingError)wpic.error_code).ToString());
+                }
+                catch
+                {
+                    throw;
+                }
+                finally
+                {
+                    if (preventDelegateFromBeingCollectedButMovingIsOkay.IsAllocated)
+                        preventDelegateFromBeingCollectedButMovingIsOkay.Free();
+                    webPMemoryBuffer.ToReadOnly();
+                    somedeed = null;
+                }
                 return new WebPImage(this.library, webPMemoryBuffer);
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossly (Advanced)"); }
@@ -1168,7 +1289,20 @@ namespace WebPWrapper.WPF
         {
             try
             {
-                int v = this.library.WebPGetDecoderVersion();
+                // Do both of these function return the same version packet?
+                int v;
+                if (this.library.IsFunctionExists("WebPGetEncoderVersion"))
+                {
+                    v = this.library.WebPGetEncoderVersion();
+                }
+                else if (this.library.IsFunctionExists("WebPGetDecoderVersion"))
+                {
+                    v = this.library.WebPGetDecoderVersion();
+                }
+                else
+                {
+                    throw new EntryPointNotFoundException("Cannot get version of the library. Function 'WebPGetEncoderVersion' and 'WebPGetDecoderVersion' are not found. Wrong library or wrong version?");
+                }
                 var revision = v % 256;
                 var minor = (v >> 8) % 256;
                 var major = (v >> 16) % 256;
@@ -1178,7 +1312,7 @@ namespace WebPWrapper.WPF
         }
 
         /// <summary>
-        /// Provide low-level access to unmanaged code. USE IT AT YOUR OWN RISK.
+        /// Return low-level access to unmanaged code. USE IT AT YOUR OWN RISK.
         /// </summary>
         /// <returns></returns>
         public ILibwebp GetDirectAccessToLibrary()
@@ -1361,16 +1495,18 @@ namespace WebPWrapper.WPF
 
         #region | Destruction |
         /// <summary>Free memory</summary>
-        private bool _disposed;
+        private int _disposed = 0;
         public void Dispose()
         {
-            if (this._disposed) return;
-            this._disposed = true;
+            if (Interlocked.Exchange(ref this._disposed, 1) == 0)
+            {
+                Libwebp.DeInit(this);
 
-            Libwebp.DeInit(this);
-            this.ManagedChunkPool.Dispose();
+                this.ManagedChunkPool = null;
+                this.library = null;
 
-            GC.SuppressFinalize(this);
+                GC.SuppressFinalize(this);
+            }
         }
         #endregion
     }

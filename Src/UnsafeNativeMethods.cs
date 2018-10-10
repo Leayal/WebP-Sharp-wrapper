@@ -8,7 +8,6 @@ using WebPWrapper.WPF.Helper;
 
 namespace WebPWrapper.WPF
 {
-    [SuppressUnmanagedCodeSecurityAttribute]
     internal sealed partial class UnsafeNativeMethods
     {
         internal unsafe static void Memcpy(byte[] dest, int destIndex, byte* src, int srcIndex, int len)
@@ -57,9 +56,11 @@ namespace WebPWrapper.WPF
 
         [DllImport("kernel32", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Auto, BestFitMapping = false, SetLastError = true)]
         public static extern SafeLibraryHandle LoadLibrary(string fileName);
+
         [ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success), DllImport("kernel32", CallingConvention = CallingConvention.Winapi, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool FreeLibrary(IntPtr hModule);
+
         [DllImport("kernel32", CallingConvention = CallingConvention.Winapi)]
         public static extern IntPtr GetProcAddress(SafeLibraryHandle hModule, String procname);
     }

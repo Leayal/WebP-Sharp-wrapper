@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using WebPWrapper.WPF.LowLevel;
 
 namespace WebPWrapper.WPF
 {

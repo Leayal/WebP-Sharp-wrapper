@@ -18,7 +18,7 @@ namespace WebPWrapper.WPF.Buffer
         private ManagedMemoryChunk _readChunk = null; // current chunk to read from
         private int _readOffset = 0;  // offset into chunk to read from
         private bool _isReadOnly;
-        private readonly ChunkPool _bufferPool;
+        private ChunkPool _bufferPool;
 
         public ChunkedBufferStream(bool isReadOnly) : this(null, false) { }
 
@@ -409,7 +409,7 @@ namespace WebPWrapper.WPF.Buffer
             }
             else
             {
-                return new ManagedMemoryChunk(4096);
+                return new ManagedMemoryChunk(Helper.RuntimeValue.DefaultBufferSize);
             }
         }
 
@@ -425,6 +425,8 @@ namespace WebPWrapper.WPF.Buffer
                 this._bufferPool.ReturnToPool(chunk);
                 chunk = chunk.Next;
             }
+
+            this._bufferPool = null;
         }
     }
 }
