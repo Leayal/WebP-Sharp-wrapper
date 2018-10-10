@@ -1,9 +1,7 @@
-﻿#if DEBUG
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace WebPWrapper.WPF.Helper
 {
@@ -12,7 +10,7 @@ namespace WebPWrapper.WPF.Helper
         #region Structs
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct IMAGE_DOS_HEADER
+        internal struct IMAGE_DOS_HEADER
         {
             public UInt16 e_magic;
             public UInt16 e_cblp;
@@ -38,7 +36,7 @@ namespace WebPWrapper.WPF.Helper
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct IMAGE_NT_HEADERS
+        internal struct IMAGE_NT_HEADERS
         {
             public UInt32 Signature;
             public IMAGE_FILE_HEADER FileHeader;
@@ -47,7 +45,7 @@ namespace WebPWrapper.WPF.Helper
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct IMAGE_FILE_HEADER
+        internal struct IMAGE_FILE_HEADER
         {
             public UInt16 Machine;
             public UInt16 NumberOfSections;
@@ -59,7 +57,7 @@ namespace WebPWrapper.WPF.Helper
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct IMAGE_OPTIONAL_HEADER32
+        internal struct IMAGE_OPTIONAL_HEADER32
         {
             public UInt16 Magic;
             public Byte MajorLinkerVersion;
@@ -96,7 +94,7 @@ namespace WebPWrapper.WPF.Helper
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct IMAGE_OPTIONAL_HEADER64
+        internal struct IMAGE_OPTIONAL_HEADER64
         {
             public UInt16 Magic;
             public Byte MajorLinkerVersion;
@@ -132,14 +130,14 @@ namespace WebPWrapper.WPF.Helper
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct IMAGE_DATA_DIRECTORY
+        internal struct IMAGE_DATA_DIRECTORY
         {
             public UInt32 VirtualAddress;
             public UInt32 Size;
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct IMAGE_SECTION_HEADER
+        internal struct IMAGE_SECTION_HEADER
         {
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 8)]
             public string Name;
@@ -155,7 +153,7 @@ namespace WebPWrapper.WPF.Helper
         }
 
         [StructLayout(LayoutKind.Explicit)]
-        public struct Misc
+        internal struct Misc
         {
             [FieldOffset(0)]
             public UInt32 PhysicalAddress;
@@ -323,5 +321,3 @@ namespace WebPWrapper.WPF.Helper
         }
     }
 }
-
-#endif

@@ -80,21 +80,36 @@ namespace WebPWrapper.WPF.LowLevel
             if (this.libraryHandle != null)
                 return;
 
-#if DEBUG
             // For debugging only
-            var header = PEReader.GetExecutableInfo(path);
-            if (RuntimeValue.is64bit == header.Is32bitAssembly())
+            PEReader header;
+            System.Reflection.AssemblyName dotnetAssemblyName;
+            try
             {
-                if (RuntimeValue.is64bit)
+                dotnetAssemblyName = System.Reflection.AssemblyName.GetAssemblyName(path);
+
+                throw new BadImageFormatException($"'{path}' is a .NET library. This is probably not libwebp library. Wrong path?");
+            }
+            catch
+            {
+                header = PEReader.GetExecutableInfo(path);
+                if (RuntimeValue.is64bit == header.Is32bitAssembly())
                 {
-                    throw new InvalidOperationException("Cannot load a 32-bit library to current process (which is a 64-bit process)");
-                }
-                else
-                {
-                    throw new InvalidOperationException("Cannot load a 64-bit library to current process (which is a 32-bit process)");
+                    if (RuntimeValue.is64bit)
+                    {
+                        throw new InvalidOperationException("Cannot load a 32-bit library to current process (which is a 64-bit process)");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Cannot load a 64-bit library to current process (which is a 32-bit process)");
+                    }
                 }
             }
-#endif
+            finally
+            {
+                dotnetAssemblyName = null;
+                header = null;
+            }
+
             // Load the library
             var handle = UnsafeNativeMethods.LoadLibrary(path);
             if (handle.IsInvalid)

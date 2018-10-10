@@ -35,7 +35,7 @@ using WebPWrapper.WPF.LowLevel;
 namespace WebPWrapper.WPF
 {
     /// <summary>
-    /// 
+    /// Provides high-level access to library. This is a full-managed-code wrapper for native libwebp. Can load either decode-only, encode-only or all-in-one libwebp library.
     /// </summary>
     public sealed class WebP : IDisposable
     {
@@ -159,11 +159,24 @@ namespace WebPWrapper.WPF
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.DecodeFile"); }
         }
 
+        /// <summary>Decode a WebP image from memory</summary>
+        /// <param name="webpData">An array of <see cref="Byte"/> which contains webp image data</param>
+        /// <returns></returns>
         public WriteableBitmap Decode(byte[] webpData) => this.Decode(webpData, this.decodeOption);
 
-        public WriteableBitmap Decode(byte[] webpData, DecoderOptions options) => this.Decode(webpData, 0, webpData.Length, options);
+        /// <summary>Decode a WebP image from memory</summary>
+        /// <param name="webpData">An array of <see cref="Byte"/> which contains webp image data</param>
+        /// <param name="decodeOptions">The decode options. This will override the default decode options.</param>
+        /// <returns></returns>
+        public WriteableBitmap Decode(byte[] webpData, DecoderOptions decodeOptions) => this.Decode(webpData, 0, webpData.Length, decodeOptions);
 
-        public WriteableBitmap Decode(byte[] webpData, int offset, int count, DecoderOptions options)
+        /// <summary>Decode a WebP image from memory</summary>
+        /// <param name="webpData">An array of <see cref="Byte"/> which contains webp image data</param>
+        /// <param name="offset">Start offset of the array</param>
+        /// <param name="count">Length from offset</param>
+        /// <param name="decodeOptions">The decode options. This will override the default decode options.</param>
+        /// <returns></returns>
+        public WriteableBitmap Decode(byte[] webpData, int offset, int count, DecoderOptions decodeOptions)
         {
             if (offset < 0)
                 throw new ArgumentException("Offset cannot be a negative value", "offset");
@@ -177,20 +190,23 @@ namespace WebPWrapper.WPF
             {
                 fixed (byte* b = webpData)
                 {
-                    bitmap = Decode(new IntPtr(b + offset), count, options);
+                    bitmap = Decode(new IntPtr(b + offset), count, decodeOptions);
                 }
             }
             return bitmap;
         }
 
-        /// <summary>Decode a WebP image</summary>
-        /// <param name="rawWebP">The data to uncompress</param>
-        /// <returns>Bitmap with the WebP image</returns>
-        public WriteableBitmap Decode(IntPtr memoryPointer, int lengthToRead)
-        {
-            return Decode(memoryPointer, lengthToRead, this.decodeOption);
-        }
+        /// <summary>Decode a WebP image from memory</summary>
+        /// <param name="memoryPointer">Memory pointer to the start of the memory</param>
+        /// <param name="lengthToRead">Length of the memory</param>
+        /// <returns></returns>
+        public WriteableBitmap Decode(IntPtr memoryPointer, int lengthToRead) => this.Decode(memoryPointer, lengthToRead, this.decodeOption);
 
+        /// <summary>Decode a WebP image from memory</summary>
+        /// <param name="memoryPointer">Memory pointer to the start of the memory</param>
+        /// <param name="lengthToRead">Length of the memory</param>
+        /// <param name="decodeOptions">The decode options. This will override the default decode options.</param>
+        /// <returns></returns>
         public WriteableBitmap Decode(IntPtr memoryPointer, int lengthToRead, DecoderOptions decodeOptions)
         {
             VP8StatusCode result;
@@ -294,18 +310,18 @@ namespace WebPWrapper.WPF
         }
 
         /// <summary>Get Thumbnail from webP in mode faster/low quality</summary>
-        /// <param name="rawWebP">The data to uncompress</param>
+        /// <param name="webpData">An array of <see cref="Byte"/> which contains webp image data</param>
         /// <param name="width">Wanted width of thumbnail</param>
         /// <param name="height">Wanted height of thumbnail</param>
         /// <returns>Bitmap with the WebP thumbnail</returns>
-        public BitmapSource GetThumbnailFast(byte[] rawWebP, int width, int height)
+        public BitmapSource GetThumbnailFast(byte[] webpData, int width, int height)
         {
             BitmapSource result;
             unsafe
             {
-                fixed (byte* b = rawWebP)
+                fixed (byte* b = webpData)
                 {
-                    result = GetThumbnailFast(new IntPtr(b), rawWebP.Length, width, height);
+                    result = GetThumbnailFast(new IntPtr(b), webpData.Length, width, height);
                 }
             }
             return result;
@@ -374,18 +390,18 @@ namespace WebPWrapper.WPF
         }
 
         /// <summary>Thumbnail from webP in mode slow/high quality</summary>
-        /// <param name="rawWebP">The data to uncompress</param>
+        /// <param name="webpData">An array of <see cref="Byte"/> which contains webp image data</param>
         /// <param name="width">Wanted width of thumbnail</param>
         /// <param name="height">Wanted height of thumbnail</param>
         /// <returns>Bitmap with the WebP thumbnail</returns>
-        public BitmapSource GetThumbnailQuality(byte[] rawWebP, int width, int height)
+        public BitmapSource GetThumbnailQuality(byte[] webpData, int width, int height)
         {
             BitmapSource result;
             unsafe
             {
-                fixed (byte* b = rawWebP)
+                fixed (byte* b = webpData)
                 {
-                    result = GetThumbnailQuality(new IntPtr(b), rawWebP.Length, width, height);
+                    result = GetThumbnailQuality(new IntPtr(b), webpData.Length, width, height);
                 }
             }
             return result;

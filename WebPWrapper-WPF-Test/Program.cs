@@ -14,8 +14,6 @@ namespace WebPWrapper_WPF_Test
             using (WebP webp = new WebP())
             {
                 var bitmap = webp.DecodeFile(@"F:\All Content\VB_Project\visual studio 2015\libwebp-1.0.0\webp_js\test_webp_js.webp");
-                WebPWrapper.WPF.LowLevel.ILibwebp libwebp = webp.GetDirectAccessToLibrary();
-                
                 webp.EncodeLossyToFile(bitmap, "Test.webp", 100);
             }
             
