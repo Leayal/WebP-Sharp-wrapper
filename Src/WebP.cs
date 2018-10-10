@@ -1525,5 +1525,42 @@ namespace WebPWrapper.WPF
             }
         }
         #endregion
+
+        #region To do APIs (or probably never????)
+        /* incremental decoding API
+         * C code:
+            WebPIDecoder* idec = WebPINewDecoder(&config.output);
+            CHECK(idec != NULL);
+            while (additional_data_is_available) {
+                // ... (get additional data in some new_data[] buffer)
+                VP8StatusCode status = WebPIAppend(idec, new_data, new_data_size);
+                if (status != VP8_STATUS_OK && status != VP8_STATUS_SUSPENDED) {
+                    break;
+                }
+                // The above call decodes the current available buffer.
+                // Part of the image can now be refreshed by calling
+                // WebPIDecGetRGB()/WebPIDecGetYUVA() etc.
+            }
+            WebPIDelete(idec);  // the object doesn't own the image memory, so it can now be deleted. config.output memory is preserved.
+
+        */
+
+        //   WebPInitDecBuffer(&output_buffer);
+        //   output_buffer.colorspace = mode;
+        //   ...
+        //   WebPIDecoder* idec = WebPINewDecoder(&output_buffer);
+        //   while (additional_data_is_available) {
+        //     // ... (get additional data in some new_data[] buffer)
+        //     status = WebPIAppend(idec, new_data, new_data_size);
+        //     if (status != VP8_STATUS_OK && status != VP8_STATUS_SUSPENDED) {
+        //       break;    // an error occurred.
+        //     }
+        //
+        //     // The above call decodes the current available buffer.
+        //     // Part of the image can now be refreshed by calling
+        //     // WebPIDecGetRGB()/WebPIDecGetYUVA() etc.
+        //   }
+        //   WebPIDelete(idec);
+        #endregion
     }
 }

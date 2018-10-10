@@ -166,8 +166,20 @@ namespace WebPWrapper.WPF.LowLevel
                     // WebPGetInfo
                     this.AssertFunctionLoadFailure<NativeDelegates.WebPGetInfo>("WebPGetInfo");
 
+                    // WebPDecodeRGBAInto
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeRGBAInto");
+
+                    // WebPDecodeARGBInto
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeARGBInto");
+
+                    // WebPDecodeBGRAInto
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeBGRAInto");
+
+                    // WebPDecodeRGBInto
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeRGBInto");
+
                     // WebPDecodeBGRInto
-                    this.AssertFunctionLoadFailure<NativeDelegates.WebPDecodeBGRInto>("WebPDecodeBGRInto");
+                    this.AssertFunctionLoadFailure<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeBGRInto");
 
                     // WebPInitDecoderConfigInternal
                     this.AssertFunctionLoadFailure<NativeDelegates.WebPInitDecoderConfigInternal>("WebPInitDecoderConfigInternal");
@@ -403,6 +415,70 @@ namespace WebPWrapper.WPF.LowLevel
             throw new EntryPointNotFoundException("Cannot find 'WebPGetInfo' function from the library. Wrong library or wrong version?");
         }
 
+        /// <summary>Decode WEBP image pointed to by *data and returns RGBA samples into a pre-allocated buffer</summary>
+        /// <param name="data">Pointer to WebP image data</param>
+        /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
+        /// <param name="output_buffer">Pointer to decoded WebP image</param>
+        /// <param name="output_buffer_size">Size of allocated buffer</param>
+        /// <param name="output_stride">Specifies the distance between scanlines</param>
+        /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
+        public int WebPDecodeRGBAInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        {
+            if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeRGBAInto", out var @delegate))
+            {
+                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPDecodeRGBAInto' function from the library. Wrong library or wrong version?");
+        }
+
+        /// <summary>Decode WEBP image pointed to by *data and returns ARGB samples into a pre-allocated buffer</summary>
+        /// <param name="data">Pointer to WebP image data</param>
+        /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
+        /// <param name="output_buffer">Pointer to decoded WebP image</param>
+        /// <param name="output_buffer_size">Size of allocated buffer</param>
+        /// <param name="output_stride">Specifies the distance between scanlines</param>
+        /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
+        public int WebPDecodeARGBInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        {
+            if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeARGBInto", out var @delegate))
+            {
+                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPDecodeARGBInto' function from the library. Wrong library or wrong version?");
+        }
+
+        /// <summary>Decode WEBP image pointed to by *data and returns BGRA samples into a pre-allocated buffer</summary>
+        /// <param name="data">Pointer to WebP image data</param>
+        /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
+        /// <param name="output_buffer">Pointer to decoded WebP image</param>
+        /// <param name="output_buffer_size">Size of allocated buffer</param>
+        /// <param name="output_stride">Specifies the distance between scanlines</param>
+        /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
+        public int WebPDecodeBGRAInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        {
+            if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeBGRAInto", out var @delegate))
+            {
+                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPDecodeBGRAInto' function from the library. Wrong library or wrong version?");
+        }
+
+        /// <summary>Decode WEBP image pointed to by *data and returns RGB samples into a pre-allocated buffer</summary>
+        /// <param name="data">Pointer to WebP image data</param>
+        /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
+        /// <param name="output_buffer">Pointer to decoded WebP image</param>
+        /// <param name="output_buffer_size">Size of allocated buffer</param>
+        /// <param name="output_stride">Specifies the distance between scanlines</param>
+        /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
+        public int WebPDecodeRGBInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        {
+            if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeRGBInto", out var @delegate))
+            {
+                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPDecodeRGBInto' function from the library. Wrong library or wrong version?");
+        }
+
         /// <summary>Decode WEBP image pointed to by *data and returns BGR samples into a pre-allocated buffer</summary>
         /// <param name="data">Pointer to WebP image data</param>
         /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
@@ -412,7 +488,7 @@ namespace WebPWrapper.WPF.LowLevel
         /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
         public int WebPDecodeBGRInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
         {
-            if (this.TryGetFunction<NativeDelegates.WebPDecodeBGRInto>("WebPDecodeBGRInto", out var @delegate))
+            if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeBGRInto", out var @delegate))
             {
                 return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
             }

@@ -38,7 +38,7 @@ namespace WebPWrapper.WPF.LowLevel
         internal delegate int WebPGetInfo([In] IntPtr data, UIntPtr data_size, out int width, out int height);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int WebPDecodeBGRInto([In] IntPtr data, UIntPtr data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
+        internal delegate int WebPDecodeAutoInto([In] IntPtr data, UIntPtr data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate int WebPInitDecoderConfigInternal(ref WebPDecoderConfig webPDecoderConfig, int WEBP_DECODER_ABI_VERSION);

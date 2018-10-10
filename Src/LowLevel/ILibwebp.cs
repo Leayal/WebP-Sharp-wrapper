@@ -106,11 +106,47 @@ namespace WebPWrapper.WPF.LowLevel
         /// <returns>1 if success, otherwise error code returned in the case of (a) formatting error(s).</returns>
         int WebPGetInfo(IntPtr data, int data_size, out int width, out int height);
 
+        /// <summary>Decode WEBP image pointed to by *data and returns RGBA samples into a pre-allocated buffer</summary>
+        /// <param name="data">Pointer to WebP image data</param>
+        /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
+        /// <param name="output_buffer">Pointer to the start of the memory where the decoded pixel will write to</param>
+        /// <param name="output_buffer_size">Size of allocated memory</param>
+        /// <param name="output_stride">Specifies the distance between scanlines</param>
+        /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
+        int WebPDecodeRGBAInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
+
+        /// <summary>Decode WEBP image pointed to by *data and returns ARGB samples into a pre-allocated buffer</summary>
+        /// <param name="data">Pointer to WebP image data</param>
+        /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
+        /// <param name="output_buffer">Pointer to the start of the memory where the decoded pixel will write to</param>
+        /// <param name="output_buffer_size">Size of allocated memory</param>
+        /// <param name="output_stride">Specifies the distance between scanlines</param>
+        /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
+        int WebPDecodeARGBInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
+
+        /// <summary>Decode WEBP image pointed to by *data and returns BGRA samples into a pre-allocated buffer</summary>
+        /// <param name="data">Pointer to WebP image data</param>
+        /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
+        /// <param name="output_buffer">Pointer to the start of the memory where the decoded pixel will write to</param>
+        /// <param name="output_buffer_size">Size of allocated memory</param>
+        /// <param name="output_stride">Specifies the distance between scanlines</param>
+        /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
+        int WebPDecodeBGRAInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
+
+        /// <summary>Decode WEBP image pointed to by *data and returns RGB samples into a pre-allocated buffer</summary>
+        /// <param name="data">Pointer to WebP image data</param>
+        /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
+        /// <param name="output_buffer">Pointer to the start of the memory where the decoded pixel will write to</param>
+        /// <param name="output_buffer_size">Size of allocated memory</param>
+        /// <param name="output_stride">Specifies the distance between scanlines</param>
+        /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
+        int WebPDecodeRGBInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
+
         /// <summary>Decode WEBP image pointed to by *data and returns BGR samples into a pre-allocated buffer</summary>
         /// <param name="data">Pointer to WebP image data</param>
         /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
-        /// <param name="output_buffer">Pointer to decoded WebP image</param>
-        /// <param name="output_buffer_size">Size of allocated buffer</param>
+        /// <param name="output_buffer">Pointer to the start of the memory where the decoded pixel will write to</param>
+        /// <param name="output_buffer_size">Size of allocated memory</param>
         /// <param name="output_stride">Specifies the distance between scanlines</param>
         /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
         int WebPDecodeBGRInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
