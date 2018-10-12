@@ -38,7 +38,7 @@ namespace WebPWrapper.WPF.LowLevel
                 throw new ArgumentNullException("myLibPath");
             // if (!File.Exists(myLibPath)) throw new FileNotFoundException("Library not found", myLibPath);
 
-            this.LoadLib(Path.GetFullPath(myLibPath), preload);
+            this.LoadLib(myLibPath, preload);
             Interlocked.Exchange(ref this.partners, 0);
         }
 
@@ -80,6 +80,7 @@ namespace WebPWrapper.WPF.LowLevel
             if (this.libraryHandle != null)
                 return;
 
+            /*
             // For debugging only
             PEReader header;
             System.Reflection.AssemblyName dotnetAssemblyName;
@@ -109,12 +110,15 @@ namespace WebPWrapper.WPF.LowLevel
                 dotnetAssemblyName = null;
                 header = null;
             }
+            */
 
             // Load the library
             var handle = UnsafeNativeMethods.LoadLibrary(path);
             if (handle.IsInvalid)
             {
                 int hr = Marshal.GetHRForLastWin32Error();
+                handle.Dispose();
+                handle = null;
                 Marshal.ThrowExceptionForHR(hr);
             }
             else
@@ -122,7 +126,15 @@ namespace WebPWrapper.WPF.LowLevel
                 this._functionPointer = new ConcurrentDictionary<string, IntPtr>();
                 this._methods = new ConcurrentDictionary<Type, Delegate>();
                 this.libraryHandle = handle;
-                this._libpath = path;
+                System.Text.StringBuilder sb = new System.Text.StringBuilder(Define.MAX_PATH);
+                if (UnsafeNativeMethods.GetModuleFileName(handle, sb, sb.Capacity) > 0)
+                {
+                    this._libpath = sb.ToString();
+                }
+                else
+                {
+                    this._libpath = path;
+                }
 
                 // Check if the library is really a FULL libwebp (with both encode and decode functions)
                 if (!preload)

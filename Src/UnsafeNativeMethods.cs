@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Text;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using WebPWrapper.WPF.Helper;
@@ -84,6 +85,9 @@ namespace WebPWrapper.WPF
             hr = 0;
             return byteread;
         }
+
+        [DllImport("kernel32.dll", SetLastError = true), PreserveSig]
+        internal static extern uint GetModuleFileName([In]SafeLibraryHandle hModule, [Out]StringBuilder lpFilename, [In][MarshalAs(UnmanagedType.U4)]int nSize);
 
         [DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Auto, BestFitMapping = false, SetLastError = true)]
         internal static extern SafeLibraryHandle LoadLibrary(string fileName);
