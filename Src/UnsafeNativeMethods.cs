@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.Win32.SafeHandles;
+using System;
+using System.IO;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -54,14 +56,43 @@ namespace WebPWrapper.WPF
             }
         }
 
-        [DllImport("kernel32", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Auto, BestFitMapping = false, SetLastError = true)]
-        public static extern SafeLibraryHandle LoadLibrary(string fileName);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private unsafe static extern int ReadFile(SafeFileHandle handle, IntPtr bytes, int numBytesToRead, out int numBytesRead, IntPtr mustBeZero);
 
-        [ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success), DllImport("kernel32", CallingConvention = CallingConvention.Winapi, SetLastError = true)]
+        internal unsafe static int ReadFileUnsafe(FileStream fs, IntPtr pointer, int offset, int count, out int hr)
+        {
+            if (count == 0)
+            {
+                hr = 0;
+                return 0;
+            }
+            int operationSuccess = ReadFile(fs.SafeFileHandle, IntPtr.Add(pointer, offset), count, out var byteread, IntPtr.Zero);
+            if (operationSuccess == 0)
+            {
+                hr = Marshal.GetLastWin32Error();
+                // 109 means EOF
+                if (hr == 109 || hr == 233)
+                {
+                    return -1;
+                }
+                if (hr == 6)
+                {
+                    fs.Dispose();
+                }
+                return -1;
+            }
+            hr = 0;
+            return byteread;
+        }
+
+        [DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Auto, BestFitMapping = false, SetLastError = true)]
+        internal static extern SafeLibraryHandle LoadLibrary(string fileName);
+
+        [ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success), DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool FreeLibrary(IntPtr hModule);
+        internal static extern bool FreeLibrary(IntPtr hModule);
 
-        [DllImport("kernel32", CallingConvention = CallingConvention.Winapi)]
-        public static extern IntPtr GetProcAddress(SafeLibraryHandle hModule, String procname);
+        [DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi)]
+        internal static extern IntPtr GetProcAddress(SafeLibraryHandle hModule, String procname);
     }
 }

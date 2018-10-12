@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Windows;
+using System.IO;
+using System.Windows.Media.Imaging;
 
 namespace WebPWrapper.WPF.Helper
 {

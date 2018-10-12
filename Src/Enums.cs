@@ -50,11 +50,14 @@ namespace WebPWrapper.WPF
         Level3,
         Level4,
         Level5,
-        /// <summary>Slowest compression speed but highest quality</summary>
         Level6,
+        Level7,
+        Level8,
+        /// <summary>Slowest compression speed but highest quality</summary>
+        Level9,
         Default = Level5,
         Fastest = Level0,
-        Best = Level6,
+        Best = Level9,
     }
 
     public enum FilterSharpness

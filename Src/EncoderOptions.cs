@@ -7,7 +7,7 @@ namespace WebPWrapper.WPF
     public sealed class EncoderOptions
     {
         private readonly CompressionType _compressionType;
-        private WebPPreset? _preset;
+        private readonly WebPPreset _preset;
 
         /// <summary>Init new option instance</summary>
         /// <param name="compression">Compression type...self-explain</param>
@@ -59,20 +59,20 @@ namespace WebPWrapper.WPF
                 this._alpha_quality = value;
             }
         }
-        /// <summary>Gets or sets a value whether the encoder should preserve the exact RGB values under transparent area or discard the values for better compression. Null = default of preset.</summary>
-        public bool? PreserveRGB { get; set; }
+        /// <summary>Gets or sets a value whether the encoder should preserve the exact RGB values under transparent area or discard the values for better compression</summary>
+        public bool PreserveRGB { get; set; } = false;
         /// <summary>Gets or sets a value whether the encoder is allowed to automatically adjust filter's strength. Null = default of preset.</summary>
         public bool? AutoFilter { get; set; }
         /// <summary>Gets or sets the value determine whether the encoder is allowed to use multi-threading if available</summary>
         public bool UseMultithreading { get; set; } = true;
-        /// <summary>Predictive filtering method for alpha plane. Null = default of preset.</summary>
-        public AlphaFiltering? AlphaFiltering { get; set; }
-        /// <summary>Gets or sets algorithm for encoding the alpha plane. Null = default of preset.</summary>
-        public AlphaCompressionType? AlphaCompression { get; set; }
+        /// <summary>Predictive filtering method for alpha plane.</summary>
+        public AlphaFiltering AlphaFiltering { get; set; } = AlphaFiltering.Fast;
+        /// <summary>Gets or sets algorithm for encoding the alpha plane.</summary>
+        public AlphaCompressionType AlphaCompression { get; set; } = AlphaCompressionType.Lossless;
         /// <summary>Gets or sets flag(s) whether the encoder should reduce memory usage in exchange of CPU consumption (and compression speed).</summary>
         public MemoryAllowance MemoryUsage { get; set; } = MemoryAllowance.AsMuchAsPossible;
-        /// <summary>Get or set the preset which .</summary>
-        private WebPPreset? Preset { get; set; }
+        /// <summary>Gets the preset which was used to create this class</summary>
+        public WebPPreset Preset => this._preset;
 
         /// <summary>
         /// Gets compression algorithm that is used to initialize this instance
@@ -113,19 +113,70 @@ namespace WebPWrapper.WPF
             }
         }
 
-        internal void ApplyConfigStruct(Libwebp libwebp, ref WebPConfig config)
+        internal void InitConfig(Libwebp libwebp, ref WebPConfig config)
         {
-            int val_method = (int)this.CompressionLevel;
-            if (this.AlphaCompression.HasValue)
-                config.alpha_compression = (int)this.AlphaCompression.Value;
+            int val_method = (int)this.CompressionLevel,
+                val_webpencoderversion = libwebp.WebPGetEncoderVersion();
+            bool val_isLossy = (this.CompressionType == CompressionType.Lossy),
+                val_isLossless = (this.CompressionType == CompressionType.Lossless),
+                val_isNearLossless = (this.CompressionType == CompressionType.NearLossless);
 
-            if (this.AlphaFiltering.HasValue)
-                config.alpha_filtering = (int)this.AlphaFiltering.Value;
+            if (val_isNearLossless && val_webpencoderversion <= 1082)
+            {
+                throw new NotSupportedException($"This encoder version [{(val_webpencoderversion >> 16) % 256}.{(val_webpencoderversion >> 8) % 256}.{val_webpencoderversion % 256}] does not suport Near-Lossless compression");
+            }
+
+            // This is something work for all compression type
+            if (libwebp.WebPConfigInit(ref config, this.Preset, this.Quality) == 0)
+                throw new InvalidOperationException("Can't config preset");
+
+            if (!val_isLossy)
+            {
+                if (libwebp.IsFunctionExists("WebPConfigLosslessPreset"))
+                {
+                    if (libwebp.WebPConfigLosslessPreset(ref config, (int)this.CompressionLevel) == 0)
+                        throw new InvalidOperationException("Can't config lossless preset");
+                }
+            }
+
+            if (val_isLossy)
+            {
+                config.lossless = 0;
+                if (val_method > 6)
+                {
+                    config.method = 6;
+                }
+                else
+                {
+                    config.method = val_method;
+                }
+                config.segments = 4;
+                config.partitions = 3;
+                if (val_webpencoderversion > 1082) //Old version don´t suport preprocessing 4
+                    config.preprocessing = 4;
+                else
+                    config.preprocessing = 3;
+            }
+            else if (val_isLossless)
+            {
+                config.lossless = 1;
+                config.near_lossless = 0;
+                config.method = val_method;
+            }
+            else if (val_isNearLossless)
+            {
+                // config.lossless = 1;
+                config.near_lossless = Convert.ToInt32(this._quality);
+                config.method = val_method;
+            }
+
+            config.alpha_compression = (int)this.AlphaCompression;
+
+            config.alpha_filtering = (int)this.AlphaFiltering;
 
             config.alpha_quality = this._alpha_quality;
 
-            if (this.PreserveRGB.HasValue)
-                config.exact = (this.PreserveRGB.Value ? 1 : 0);
+            config.exact = (this.PreserveRGB ? 1 : 0);
 
             if (this.AutoFilter.HasValue)
                 config.autofilter = (this.AutoFilter.Value ? 1 : 0);
@@ -133,13 +184,6 @@ namespace WebPWrapper.WPF
             config.thread_level = (this.UseMultithreading ? 1 : 0);
 
             config.low_memory = (((this.MemoryUsage & MemoryAllowance.LowMemoryCompressionMode) == MemoryAllowance.LowMemoryCompressionMode) ? 1 : 0);
-
-            // May cause bug which switch to lossless if quality = 0 while selecting NearLossless
-            config.near_lossless = ((this._compressionType == CompressionType.NearLossless) ? Convert.ToInt32(this._quality) : 0);
-
-            config.lossless = ((this._compressionType == CompressionType.Lossless) ? 1 : 0);
-
-            config.method = val_method;
 
             config.quality = this._quality;
 
@@ -154,13 +198,7 @@ namespace WebPWrapper.WPF
                 config.image_hint = this.ImageHint.Value;
 
             // I don't know
-            config.pass = val_method + 1;
-            config.segments = 4;
-            config.partitions = 3;
-            if (libwebp.WebPGetDecoderVersion() > 1082) //Old version don´t suport preprocessing 4
-                config.preprocessing = 4;
-            else
-                config.preprocessing = 3;
+            config.pass = config.method + 1;
         }
     }
 }

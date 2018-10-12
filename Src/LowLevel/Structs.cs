@@ -52,7 +52,7 @@ namespace WebPWrapper.WPF.LowLevel
         public int autofilter;
         /// <summary>Algorithm for encoding the alpha plane (0 = none, 1 = compressed with WebP lossless). Default is 1.</summary>
         public int alpha_compression;
-        /// <summary>Predictive filtering method for alpha plane. 0: none, 1: fast, 2: best. Default if 1.</summary>
+        /// <summary>Predictive filtering method for alpha plane. 0: none, 1: fast, 2: best. Default is 1.</summary>
         public int alpha_filtering;
         /// <summary>Between 0 (smallest size) and 100 (lossless). Default is 100.</summary>
         public int alpha_quality;

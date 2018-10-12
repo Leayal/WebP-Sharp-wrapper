@@ -5,8 +5,6 @@ VisualStudioVersion = 15.0.28010.2003
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebPWrapper-WPF", "Src\WebPWrapper-WPF.csproj", "{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebPWrapper-WPF-Test", "WebPWrapper-WPF-Test\WebPWrapper-WPF-Test.csproj", "{1F815523-B4DE-4007-994C-0151D98184DF}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,9 +15,6 @@ Global
 		{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1F815523-B4DE-4007-994C-0151D98184DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1F815523-B4DE-4007-994C-0151D98184DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1F815523-B4DE-4007-994C-0151D98184DF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

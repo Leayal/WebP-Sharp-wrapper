@@ -1,10 +1,10 @@
 ﻿using System.Collections.Concurrent;
+using System;
 
 namespace WebPWrapper.WPF.Buffer
 {
-    class ChunkPool
+    class ChunkPool : IDisposable
     {
-        private object locking;
         private readonly int _chunkSize;
         private ConcurrentBag<ManagedMemoryChunk> chunkList;
 
@@ -31,6 +31,12 @@ namespace WebPWrapper.WPF.Buffer
             {
                 return new ManagedMemoryChunk(this._chunkSize);
             }
+        }
+
+        public void Dispose()
+        {
+            this.chunkList = null;
+            GC.SuppressFinalize(this);
         }
     }
 }

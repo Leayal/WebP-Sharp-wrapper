@@ -35,6 +35,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <Prefer32Bit>false</Prefer32Bit>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup>
     <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
@@ -49,9 +50,11 @@
     <Compile Include="Buffer\ChunkedBufferStream.cs" />
     <Compile Include="Buffer\ChunkPool.cs" />
     <Compile Include="Buffer\MemoryChunk.cs" />
+    <Compile Include="Buffer\UnmanagedBuffer.cs" />
     <Compile Include="Buffer\UnmanagedChunkedBufferStream.cs" />
     <Compile Include="DecoderOptions.cs" />
     <Compile Include="Enums.cs" />
+    <Compile Include="InvalidOptionValueException.cs" />
     <Compile Include="LowLevel\Define.cs" />
     <Compile Include="EncoderOptions.cs" />
     <Compile Include="LowLevel\Enums.cs" />

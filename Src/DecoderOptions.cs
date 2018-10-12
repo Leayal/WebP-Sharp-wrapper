@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using System.Windows.Media.Imaging;
 using WebPWrapper.WPF.LowLevel;
 
 namespace WebPWrapper.WPF
@@ -54,28 +55,49 @@ namespace WebPWrapper.WPF
         public bool UseMultithreading { get; set; } = true;
 
         private Int32Rect crop;
-        private int scaleWidth, scaleHeight;
-        /// <summary>
-        /// Scale the output (or cropped output).
-        /// </summary>
-        /// <param name="pixelWidth">Set 0 to disable scaling, or non-negative value for the width scaling in pixel</param>
-        /// <param name="pixelHeight">Set 0 to disable scaling, or non-negative value for the height scaling in pixel</param>
-        public void SetOutputScale(int pixelWidth, int pixelHeight)
-        {
-            this.scaleWidth = pixelWidth;
-            this.scaleHeight = pixelHeight;
-        }
+        private BitmapSizeOptions _scale;
         /// <summary>
         /// Crop the output after decoded
         /// </summary>
         /// <param name="cropOffset"></param>
         public void SetOutputCrop(Int32Rect cropOffset)
         {
+            if (cropOffset.Width == 0 || cropOffset.Height == 0)
+                throw new ArgumentException("Invalid crop size. Why do you encode the image but take nothing from it (Crop size: 0x0)?");
             this.crop = cropOffset;
         }
 
-        public Size ScaleSize => new Size(scaleWidth, scaleHeight);
+        /// <summary>Gets or sets the scale option for the output (after cropping, if <see cref="CropArea"/> is set)</summary>
+        public BitmapSizeOptions ScaleSize
+        {
+            get => this._scale;
+            set
+            {
+                if (value.Rotation == Rotation.Rotate0)
+                {
+                    this._scale = value;
+                }
+                else
+                {
+                    throw new NotSupportedException("Rotating is not supported. You can Implemented rotating yourself!");
+                }
+            }
+        }
         public Int32Rect CropArea => this.crop;
+
+        internal bool HasScaling
+        {
+            get
+            {
+                if (this._scale == null)
+                    return false;
+
+                if (this._scale.PixelWidth == 0 && this._scale.PixelHeight == 0)
+                    return false;
+
+                return true;
+            }
+        }
 
         internal WebPDecoderOptions GetStruct()
         {
@@ -91,10 +113,14 @@ namespace WebPWrapper.WPF
                 crop_left = this.crop.X,
                 crop_top = this.crop.Y,
                 crop_width = this.crop.Width,
-                crop_height = this.crop.Height,
-                use_scaling = (((this.scaleWidth == 0) && (this.scaleHeight == 0)) ? 0 : 1),
-                scaled_width = this.scaleWidth,
-                scaled_height = this.scaleHeight
+                crop_height = this.crop.Height
+
+                // We will deal with scaling later
+                /*
+                use_scaling = (isScaling ? 0 : 1),
+                scaled_width = (isScaling ? this._scale.PixelWidth : 0),
+                scaled_height = (isScaling ? this._scale.PixelHeight : 0)
+                */
             };
         }
     }

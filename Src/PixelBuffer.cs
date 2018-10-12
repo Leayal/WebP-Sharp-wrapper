@@ -10,7 +10,7 @@ namespace WebPWrapper.WPF
 {
     class PixelBuffer : IDisposable
     {
-        private static readonly PropertyInfo PixelFormat_HasAlphaProperty = typeof(PixelFormat).GetProperty("HasAlpha", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly Lazy<PropertyInfo> PixelFormat_HasAlphaProperty = new Lazy<PropertyInfo>(() => typeof(PixelFormat).GetProperty("HasAlpha", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance), LazyThreadSafetyMode.ExecutionAndPublication);
         private byte[] _buffer;
         private bool? _hasAlpha;
         private long _working;
@@ -194,21 +194,19 @@ namespace WebPWrapper.WPF
             }
         }
 
-        private bool _doesItHaveAndUseAlpha;
-
         private bool DoesItHaveAndUseAlpha()
         {
             if (Interlocked.Exchange(ref this._working, 1) == 0)
             {
                 if (this.IsItPossibleToContainsAlpha() && this.DoesItReallyUseAlpha())
                 {
-                    this._doesItHaveAndUseAlpha = true;
+                    this._hasAlpha = true;
                     Interlocked.Increment(ref this._working);
                     return true;
                 }
                 else
                 {
-                    this._doesItHaveAndUseAlpha = false;
+                    this._hasAlpha = false;
                     Interlocked.Increment(ref this._working);
                     return false;
                 }
@@ -217,7 +215,7 @@ namespace WebPWrapper.WPF
             {
                 if (Interlocked.Read(ref this._working) == 2)
                 {
-                    return _doesItHaveAndUseAlpha;
+                    return this._hasAlpha.Value;
                 }
                 else
                 {
@@ -237,7 +235,8 @@ namespace WebPWrapper.WPF
         /// <returns></returns>
         public static bool IsItPossibleToContainsAlpha(PixelFormat format)
         {
-            if (PixelFormat_HasAlphaProperty == null)
+            var propertyinfo = PixelFormat_HasAlphaProperty.Value;
+            if (propertyinfo == null)
             {
                 // (image.PixelFormat & (PixelFormat.Indexed | PixelFormat.Alpha | PixelFormat.PAlpha)) == PixelFormat.Undefined
                 if (format == PixelFormats.Bgra32)
@@ -254,7 +253,7 @@ namespace WebPWrapper.WPF
             else
             {
                 // Use Reflector to get internal "HasAlpha" property.
-                return (bool)PixelFormat_HasAlphaProperty.GetValue(format, null);
+                return (bool)propertyinfo.GetValue(format, null);
             }
         }
 
