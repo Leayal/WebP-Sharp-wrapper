@@ -7,6 +7,6 @@
         public const int WEBP_MAX_DIMENSION = 16383;
 
         // Windows's stuffs
-        public const int MAX_PATH = 259;
+        public const int MAX_PATH = 1024; // Ideal at 260. But....
     }
 }
