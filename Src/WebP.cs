@@ -534,7 +534,7 @@ namespace WebPWrapper.WPF
 
                 return new WebPImage(this.library, new SimpleWebPContentStream(unmanagedData, size));
             }
-            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossly"); }
+            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossly", ex); }
             finally
             {
                 if (unmanagedData != IntPtr.Zero)
@@ -554,7 +554,11 @@ namespace WebPWrapper.WPF
             if (bmp.PixelWidth == 0 || bmp.PixelHeight == 0)
                 throw new ArgumentException("Bitmap contains no data.", "bmp");
 
-            return this.Encode(bmp, new EncoderOptions(CompressionType.NearLossless, WebPPreset.Default, quality));
+            try
+            {
+                return this.Encode(bmp, new EncoderOptions(CompressionType.NearLossless, WebPPreset.Default, quality));
+            }
+            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeNearLossless", ex); }
         }
 
         /// <summary>Encode bitmap to Lossless WebP bypass default <see cref="EncoderOptions"/> (Simple encoding API)</summary>
@@ -575,7 +579,7 @@ namespace WebPWrapper.WPF
 
                 return new WebPImage(this.library, new SimpleWebPContentStream(unmanagedData, size));
             }
-            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossless"); }
+            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeLossless", ex); }
             finally
             {
                 if (unmanagedData != IntPtr.Zero)
@@ -652,7 +656,7 @@ namespace WebPWrapper.WPF
                 }
                 return new WebPImage(this.library, webPMemoryBuffer);
             }
-            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.Encode"); }
+            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.Encode", ex); }
             finally
             {
                 if (pixelBuffer != null)
@@ -726,7 +730,7 @@ namespace WebPWrapper.WPF
 
                 }
             }
-            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeNearLossless"); }
+            catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.EncodeToFile", ex); }
             finally
             {
                 if (pixelBuffer != null)
@@ -766,6 +770,11 @@ namespace WebPWrapper.WPF
 
         private PixelBuffer WebPPictureImportAuto(BitmapSource bmp, ref WebPPicture wpic)
         {
+            if (bmp.PixelWidth > Define.WEBP_MAX_DIMENSION || bmp.PixelWidth > Define.WEBP_MAX_DIMENSION)
+            {
+                throw new NotSupportedException($"Bitmap's dimension is too large. Max is {Define.WEBP_MAX_DIMENSION}x{Define.WEBP_MAX_DIMENSION} pixels.");
+            }
+
             PixelBuffer pixelBuffer;
 
             wpic.width = bmp.PixelWidth;
@@ -837,6 +846,11 @@ namespace WebPWrapper.WPF
 
         private int WebPPictureImportAuto(PixelFormat pixelFormat, ref WebPPicture wpic, IntPtr buffer, int stride)
         {
+            if (wpic.width > Define.WEBP_MAX_DIMENSION || wpic.height > Define.WEBP_MAX_DIMENSION)
+            {
+                throw new NotSupportedException($"Bitmap's dimension is too large. Max is {Define.WEBP_MAX_DIMENSION}x{Define.WEBP_MAX_DIMENSION} pixels.");
+            }
+
             if (pixelFormat == PixelFormats.Bgr24)
                 return this.library.WebPPictureImportBGR(ref wpic, buffer, stride);
             else if (pixelFormat == PixelFormats.Bgr32)
@@ -862,6 +876,11 @@ namespace WebPWrapper.WPF
 
         private int WebPEncodeLossySimple(BitmapSource bmp, float quality, out IntPtr output)
         {
+            if (bmp.PixelWidth > Define.WEBP_MAX_DIMENSION || bmp.PixelWidth > Define.WEBP_MAX_DIMENSION)
+            {
+                throw new NotSupportedException($"Bitmap's dimension is too large. Max is {Define.WEBP_MAX_DIMENSION}x{Define.WEBP_MAX_DIMENSION} pixels.");
+            }
+
             int size = 0;
             if (bmp.Format == PixelFormats.Bgr24)
             {
@@ -915,6 +934,11 @@ namespace WebPWrapper.WPF
 
         private int WebPEncodeLosslessSimple(BitmapSource bmp, out IntPtr output)
         {
+            if (bmp.PixelWidth > Define.WEBP_MAX_DIMENSION || bmp.PixelWidth > Define.WEBP_MAX_DIMENSION)
+            {
+                throw new NotSupportedException($"Bitmap's dimension is too large. Max is {Define.WEBP_MAX_DIMENSION}x{Define.WEBP_MAX_DIMENSION} pixels.");
+            }
+
             int size = 0;
             if (bmp.Format == PixelFormats.Bgr24)
             {
@@ -1133,7 +1157,7 @@ namespace WebPWrapper.WPF
                     ref_size = ref_height * ref_stride;
 
                 memoryPointer = Marshal.AllocHGlobal(Math.Max(src_size, ref_size));
-                source.CopyPixels(Int32Rect.Empty, memoryPointer, 1024, src_stride);
+                source.CopyPixels(Int32Rect.Empty, memoryPointer, 4096, src_stride);
 
                 // Setup the source picture data, allocating the bitmap, width and height
                 wpicSource = new WebPPicture();
