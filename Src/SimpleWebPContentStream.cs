@@ -11,7 +11,7 @@ namespace WebPWrapper.WPF
             {
                 byte* b = (byte*)(memoryPointer.ToPointer());
                 for (int i = 0; i < length; i++)
-                    this.WriteByte(b[i]);
+                    base.WriteByte(b[i]);
             }
             this.SetReadOnlyCore(true);
         }

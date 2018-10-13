@@ -8,7 +8,7 @@ namespace WebPWrapper.WPF
     /// </summary>
     public abstract class WebPContentStream : UnmanagedMemoryStream
     {
-        protected IntPtr startPointer;
+        private IntPtr startPointer;
 
         protected unsafe WebPContentStream(IntPtr memoryPointer, int length) : base((byte*)(memoryPointer.ToPointer()), length, length, FileAccess.Read)
         {

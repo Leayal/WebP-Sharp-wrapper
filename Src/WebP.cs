@@ -32,6 +32,7 @@ using WebPWrapper.WPF.Buffer;
 using WebPWrapper.WPF.Helper;
 using WebPWrapper.WPF.LowLevel;
 using System.Reflection;
+using System.Security.Permissions;
 
 namespace WebPWrapper.WPF
 {
@@ -142,58 +143,57 @@ namespace WebPWrapper.WPF
         /// <returns>Bitmap with the WebP image</returns>
         public BitmapSource DecodeFromFile(string pathFileName, DecoderOptions options)
         {
-            try
+            using (FileStream fs = File.OpenRead(pathFileName))
             {
-                using (FileStream fs = File.OpenRead(pathFileName))
+                if (fs.Length == 0)
+                    throw new FileFormatException("There is nothing to decode");
+                if (fs.Length > int.MaxValue)
+                    throw new IndexOutOfRangeException($"File too big to be handle in memory. Even bigger than {int.MaxValue} bytes (around 2GB). Because 'int' can go as far as that.");
+
+                IntPtr memory = IntPtr.Zero;
+
+                try
                 {
-                    if (fs.Length == 0)
-                        throw new FileFormatException("There is nothing to decode");
-                    if (fs.Length > int.MaxValue)
-                        throw new IndexOutOfRangeException($"File too big to be handle in memory. Even bigger than {int.MaxValue} bytes (around 2GB). This is because 'int' can go as far as that.");
-
                     int size = (int)fs.Length;
-
                     // incremental APis are not exposed yet. So we can't just stream chunks to the decoder.
-                    IntPtr memory = IntPtr.Zero;
-                    try
+
+                    memory = Marshal.AllocHGlobal(size);
+
+                    int num = UnsafeNativeMethods.ReadFileUnsafe(fs, memory, 0, size, out var hr);
+                    if (num == -1)
                     {
-                        memory = Marshal.AllocHGlobal(size);
-
-                        int num = UnsafeNativeMethods.ReadFileUnsafe(fs, memory, 0, size, out var hr);
-                        if (num == -1)
+                        switch (hr)
                         {
-                            switch (hr)
-                            {
-                                case 109:
-                                    num = 0;
-                                    break;
-                                default:
-                                    throw Marshal.GetExceptionForHR(hr);
-                            }
-                        }
-
-                        if (num >= 0)
-                        {
-                            BitmapSource result;
-                            unsafe
-                            {
-                                result = this.Decode(memory, size, options);
-                            }
-
-                            return result;
+                            case 109:
+                                num = 0;
+                                break;
+                            default:
+                                Marshal.ThrowExceptionForHR(hr);
+                                break;
                         }
                     }
-                    finally
+
+                    if (num >= 0)
                     {
-                        if (memory != IntPtr.Zero)
-                            Marshal.FreeHGlobal(memory);
+                        BitmapSource result;
+                        unsafe
+                        {
+                            result = this.Decode(memory, size, options);
+                        }
+
+                        return result;
                     }
                     throw new IOException($"Something went wrong.");
                 }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message + "\r\nIn WebP.DecodeFromFile", ex);
+                catch (Exception ex)
+                {
+                    throw new Exception(ex.Message + "\r\nIn WebP.DecodeFromFile", ex);
+                }
+                finally
+                {
+                    if (memory != IntPtr.Zero)
+                        Marshal.FreeHGlobal(memory);
+                }
             }
         }
 
@@ -222,16 +222,24 @@ namespace WebPWrapper.WPF
             if ((offset + count) > webpData.Length)
                 throw new ArgumentException("Count exceeded the buffer length", "count");
 
-            WriteableBitmap bitmap;
-
-            unsafe
+            GCHandle handle = GCHandle.Alloc(webpData, GCHandleType.Pinned);
+            
+            try
             {
-                fixed (byte* b = webpData)
+                if (offset == 0)
                 {
-                    bitmap = this.Decode(new IntPtr(b + offset), count, decodeOptions);
+                    return this.Decode(handle.AddrOfPinnedObject(), count, decodeOptions);
+                }
+                else
+                {
+                    return this.Decode(IntPtr.Add(handle.AddrOfPinnedObject(), offset), count, decodeOptions);
                 }
             }
-            return bitmap;
+            finally
+            {
+                if (handle.IsAllocated)
+                    handle.Free();
+            }
         }
 
         /// <summary>Decode a WebP image from memory</summary>

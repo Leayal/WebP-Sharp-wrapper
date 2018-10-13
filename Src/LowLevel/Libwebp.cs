@@ -53,7 +53,7 @@ namespace WebPWrapper.WPF.LowLevel
             {
                 // Let's leave the full-load library for another time.
                 myLib = new Libwebp(library_path, true);
-                cache.TryAdd(library_path, myLib);
+                cache.TryAdd(myLib.LibraryPath, myLib);
             }
 
             Interlocked.Increment(ref myLib.partners);
