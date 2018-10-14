@@ -678,7 +678,7 @@ namespace WebPWrapper.WPF
         /// <summary>Encode bitmap to WebP with given option and write to a file</summary>
         /// <param name="bmp">Bitmap to be encode to the WebP image</param>
         /// <param name="pathFileName">The file to write</param>
-        public void EncodeToFile(BitmapSource bmp, string pathFileName) => this.EncodeToFile(bmp, pathFileName);
+        public void EncodeToFile(BitmapSource bmp, string pathFileName) => this.EncodeToFile(bmp, pathFileName, null);
 
         /// <summary>Encode bitmap to WebP with given option and write to a file. (Advanced API)</summary>
         /// <param name="bmp">Bitmap to be encode to the WebP image</param>
@@ -695,6 +695,9 @@ namespace WebPWrapper.WPF
             {
                 //Inicialize config struct
                 WebPConfig config = new WebPConfig();
+
+                if (options == null)
+                    options = this.defaultEncodeOption;
 
                 options.InitConfig(this.library, ref config);
 
