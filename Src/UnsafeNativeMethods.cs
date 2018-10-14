@@ -89,14 +89,14 @@ namespace WebPWrapper.WPF
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, ThrowOnUnmappableChar = true), PreserveSig]
         internal static extern uint GetModuleFileName([In]SafeLibraryHandle hModule, [Out]StringBuilder lpFilename, [In][MarshalAs(UnmanagedType.U4)]int nSize);
 
-        [DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Auto, BestFitMapping = false, SetLastError = true)]
+        [DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Unicode, BestFitMapping = false, SetLastError = true)]
         internal static extern SafeLibraryHandle LoadLibrary(string fileName);
 
         [ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success), DllImport("kernel32.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool FreeLibrary(IntPtr hModule);
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Winapi, ThrowOnUnmappableChar = true)]
+        [DllImport("kernel32.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Winapi, ThrowOnUnmappableChar = true)]
         internal static extern IntPtr GetProcAddress(SafeLibraryHandle hModule, string procname);
     }
 }

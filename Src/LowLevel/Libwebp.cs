@@ -48,12 +48,28 @@ namespace WebPWrapper.WPF.LowLevel
                 throw new ArgumentNullException("library_path");
 
             Libwebp myLib;
-            library_path = Path.GetFullPath(library_path);
             if (!cache.TryGetValue(library_path, out myLib))
             {
                 // Let's leave the full-load library for another time.
-                myLib = new Libwebp(library_path, true);
-                cache.TryAdd(myLib.LibraryPath, myLib);
+                // Make use of LoadLibrary to search for the library
+                var loadedLib = new Libwebp(library_path, true);
+
+                // Check if the library is already existed in cache
+                var addedOrNot = cache.GetOrAdd(loadedLib.LibraryPath, loadedLib);
+
+                if (addedOrNot == loadedLib)
+                {
+                    // It's added successfully. Which means loadedLib is (in a valid way) the first-arrive in cache.
+                    // Let's use it.
+                    myLib = loadedLib;
+                }
+                else
+                {
+                    // It's failed. Which means another library is already added before this.
+                    // Let's dispose the current one (unload library) and use the already existed one.
+                    loadedLib.Dispose();
+                    myLib = addedOrNot;
+                }
             }
 
             Interlocked.Increment(ref myLib.partners);
