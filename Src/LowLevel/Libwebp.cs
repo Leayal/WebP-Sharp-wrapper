@@ -19,11 +19,22 @@ namespace WebPWrapper.WPF.LowLevel
         private ConcurrentDictionary<Type, Delegate> _methods;
         private ConcurrentDictionary<string, IntPtr> _functionPointer;
         private string _libpath;
+        private bool _canEncode, _canDecode;
 
         /// <summary>
         /// Full path to the imported library
         /// </summary>
         public string LibraryPath => this._libpath;
+
+        /// <summary>
+        /// Gets a value indicating whether the current loaded library supports WebP encoding.
+        /// </summary>
+        public bool CanEncode => this._canEncode;
+
+        /// <summary>
+        /// Gets a value indicating whether the current loaded library supports WebP decoding.
+        /// </summary>
+        public bool CanDecode => this._canDecode;
 
         /// <summary>Huh??</summary>
         /// <param name="myLibPath">Library path to load</param>
@@ -37,6 +48,9 @@ namespace WebPWrapper.WPF.LowLevel
             if (string.IsNullOrWhiteSpace(myLibPath))
                 throw new ArgumentNullException("myLibPath");
             // if (!File.Exists(myLibPath)) throw new FileNotFoundException("Library not found", myLibPath);
+
+            this._canEncode = false;
+            this._canDecode = false;
 
             this.LoadLib(myLibPath, preload);
             Interlocked.Exchange(ref this.partners, 0);
@@ -150,6 +164,24 @@ namespace WebPWrapper.WPF.LowLevel
                 else
                 {
                     this._libpath = path;
+                }
+
+                // Ensure that we're loading libwebp library.
+                // Assert decoding
+                if (this.IsFunctionExists("WebPGetDecoderVersion"))
+                {
+                    this._canDecode = true;
+                }
+                // Assert encoding
+                if (this.IsFunctionExists("WebPGetEncoderVersion"))
+                {
+                    this._canEncode = true;
+                }
+
+                if (!this._canEncode && !this._canDecode)
+                {
+                    this.Dispose();
+                    throw new FileLoadException("Cannot find either 'WebPGetDecoderVersion' or 'WebPGetDecoderVersion' function in the library. Wrong library or wrong version?");
                 }
 
                 // Check if the library is really a FULL libwebp (with both encode and decode functions)
@@ -900,9 +932,15 @@ namespace WebPWrapper.WPF.LowLevel
             if (this.libraryHandle == null || this.libraryHandle.IsClosed || this.libraryHandle.IsInvalid)
                 return;
 
+            this._canEncode = false;
+            this._canDecode = false;
+
+            if (this._functionPointer != null)
+                this._functionPointer.Clear();
+            this._functionPointer = null;
+
             if (this._methods != null)
                 this._methods.Clear();
-
             this._methods = null;
 
             this.libraryHandle.Close();

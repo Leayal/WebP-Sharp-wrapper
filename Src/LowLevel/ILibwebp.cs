@@ -12,6 +12,16 @@ namespace WebPWrapper.WPF.LowLevel
         /// </summary>
         string LibraryPath { get; }
 
+        /// <summary>
+        /// Gets a value indicating whether the current loaded library supports WebP encoding.
+        /// </summary>
+        bool CanEncode { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the current loaded library supports WebP decoding.
+        /// </summary>
+        bool CanDecode { get; }
+
         /// <summary>This function will initialize the configuration according to a predefined set of parameters (referred to by 'preset') and a given quality factor.</summary>
         /// <param name="config">The WebPConfig struct</param>
         /// <param name="preset">Type of image</param>

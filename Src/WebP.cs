@@ -1034,6 +1034,16 @@ namespace WebPWrapper.WPF
         }
 
         /// <summary>
+        /// Gets a value indicating whether the current loaded library supports WebP encoding.
+        /// </summary>
+        public bool CanEncode => this.library.CanEncode;
+
+        /// <summary>
+        /// Gets a value indicating whether the current loaded library supports WebP decoding.
+        /// </summary>
+        public bool CanDecode => this.library.CanDecode;
+
+        /// <summary>
         /// Return low-level access to unmanaged code. USE IT AT YOUR OWN RISK.
         /// </summary>
         /// <returns></returns>
