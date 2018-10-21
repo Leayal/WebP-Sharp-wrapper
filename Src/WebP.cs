@@ -1086,8 +1086,10 @@ namespace WebPWrapper.WPF
             try
             {
                 int read = stream.Read(buffer, 0, buffer.Length);
+                if (read == 0)
+                    return false;
                 if (returnToOldPos)
-                    stream.Seek(-12, SeekOrigin.Current);
+                    stream.Seek(read * -1, SeekOrigin.Current);
                 if (read == 12)
                 {
                     if (System.Text.Encoding.ASCII.GetString(buffer, 0, 4) == "RIFF")
