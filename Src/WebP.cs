@@ -140,60 +140,81 @@ namespace WebPWrapper.WPF
         /// <summary>Read a WebP file (Advanced API)</summary>
         /// <param name="pathFileName">WebP file to load</param>
         /// <param name="options">Decoder options</param>
-        /// <returns>Bitmap with the WebP image</returns>
+        /// <returns>Bitmap decoded from the WebP image</returns>
         public BitmapSource DecodeFromFile(string pathFileName, DecoderOptions options)
         {
             using (FileStream fs = File.OpenRead(pathFileName))
+                return this.DecodeFromFile(fs, true, options);
+        }
+        /// <summary>Read WebP from <see cref="FileStream"/> and close the stream after decode</summary>
+        /// <param name="fs"><see cref="FileStream"/> of the webp file</param>
+        /// <returns></returns>
+        public BitmapSource DecodeFromFile(FileStream fs) => this.DecodeFromFile(fs, true, this.defaultDecodeOption);
+        /// <summary>Read a WebP file</summary>
+        /// <param name="fs"><see cref="FileStream"/> of the webp file</param>
+        /// <param name="leaveopen">Determine if the stream will be closed after decode</param>
+        /// <returns></returns>
+        public BitmapSource DecodeFromFile(FileStream fs, bool leaveopen) => this.DecodeFromFile(fs, leaveopen, this.defaultDecodeOption);
+        /// <summary>Read a WebP file (Advanced API)</summary>
+        /// <param name="fs"><see cref="FileStream"/> of the webp file</param>
+        /// <param name="leaveopen">Determine if the stream will be closed after decode</param>
+        /// <param name="options">Decoder options</param>
+        /// <returns>Bitmap decoded from the WebP image</returns>
+        public BitmapSource DecodeFromFile(FileStream fs, bool leaveopen, DecoderOptions options)
+        {
+            long longsize = (int)(fs.Length - fs.Position);
+            if (longsize == 0)
+                throw new FileFormatException($"There is nothing to decode. Position start at {fs.Position}.");
+            if (longsize > int.MaxValue)
+                throw new IndexOutOfRangeException($"File too big to be handle in memory. Even bigger than {int.MaxValue} bytes (around 2GB). Because 'int' can go as far as that.");
+
+            IntPtr memory = IntPtr.Zero;
+
+            try
             {
-                if (fs.Length == 0)
-                    throw new FileFormatException("There is nothing to decode");
-                if (fs.Length > int.MaxValue)
-                    throw new IndexOutOfRangeException($"File too big to be handle in memory. Even bigger than {int.MaxValue} bytes (around 2GB). Because 'int' can go as far as that.");
+                
+                int size = (int)longsize;
+                // incremental APis are not exposed yet. So we can't just stream chunks to the decoder.
 
-                IntPtr memory = IntPtr.Zero;
+                memory = Marshal.AllocHGlobal(size);
 
-                try
+                int num = UnsafeNativeMethods.ReadFileUnsafe(fs, memory, 0, size, out var hr);
+                if (num == -1)
                 {
-                    int size = (int)fs.Length;
-                    // incremental APis are not exposed yet. So we can't just stream chunks to the decoder.
-
-                    memory = Marshal.AllocHGlobal(size);
-
-                    int num = UnsafeNativeMethods.ReadFileUnsafe(fs, memory, 0, size, out var hr);
-                    if (num == -1)
+                    switch (hr)
                     {
-                        switch (hr)
-                        {
-                            case 109:
-                                num = 0;
-                                break;
-                            default:
-                                Marshal.ThrowExceptionForHR(hr);
-                                break;
-                        }
+                        case 109:
+                            num = 0;
+                            break;
+                        default:
+                            Marshal.ThrowExceptionForHR(hr);
+                            break;
+                    }
+                }
+
+                if (num >= 0)
+                {
+                    BitmapSource result;
+                    unsafe
+                    {
+                        result = this.Decode(memory, size, options);
                     }
 
-                    if (num >= 0)
-                    {
-                        BitmapSource result;
-                        unsafe
-                        {
-                            result = this.Decode(memory, size, options);
-                        }
+                    return result;
+                }
+                throw new IOException($"Something went wrong.");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message + "\r\nIn WebP.DecodeFromFile", ex);
+            }
+            finally
+            {
+                if (memory != IntPtr.Zero)
+                    Marshal.FreeHGlobal(memory);
 
-                        return result;
-                    }
-                    throw new IOException($"Something went wrong.");
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception(ex.Message + "\r\nIn WebP.DecodeFromFile", ex);
-                }
-                finally
-                {
-                    if (memory != IntPtr.Zero)
-                        Marshal.FreeHGlobal(memory);
-                }
+                if (!leaveopen)
+                    fs.Dispose();
             }
         }
 
@@ -1068,15 +1089,18 @@ namespace WebPWrapper.WPF
         /// </summary>
         /// <param name="stream">The stream to verify</param>
         /// <returns>A boolean determine whether if the stream contains WebP data or not</returns>
-        public static bool IsWebP(Stream stream)
-        {
-            return IsWebP(stream, true);
-        }
+        public static bool IsWebP(Stream stream) => IsWebP(stream, true);
 
-        private static bool IsWebP(Stream stream, bool returnToOldPos)
+        /// <summary>
+        /// Verify the content (from current stream's position) if the stream really contains a WebP image.
+        /// </summary>
+        /// <param name="stream">The stream to verify</param>
+        /// <param name="preservePosition">Determine if the position should be preserve after checking. <see cref="Stream.CanSeek"/> must be true.</param>
+        /// <returns></returns>
+        public static bool IsWebP(Stream stream, bool preservePosition)
         {
-            if (returnToOldPos && !stream.CanSeek)
-                throw new NotSupportedException("Sorry");
+            if (preservePosition && !stream.CanSeek)
+                throw new NotSupportedException("The stream cannot be seeked.");
 
             byte[] buffer = new byte[12];
             // Read the 12 bytes:
@@ -1088,7 +1112,7 @@ namespace WebPWrapper.WPF
                 int read = stream.Read(buffer, 0, buffer.Length);
                 if (read == 0)
                     return false;
-                if (returnToOldPos)
+                if (preservePosition)
                     stream.Seek(read * -1, SeekOrigin.Current);
                 if (read == 12)
                 {
