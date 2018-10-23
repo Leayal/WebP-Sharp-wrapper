@@ -848,29 +848,19 @@ namespace WebPWrapper.WPF
                 if (this.library.WebPPictureImportRGB(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
                     throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportRGB");
             }
-            else if (bmp.Format == PixelFormats.Indexed8)
-            {
-                pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32);
-                if (this.library.WebPPictureImportBGRA(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
-                    throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGRA");
-            }
             else
             {
-                if (bmp.Format.BitsPerPixel == 24)
+                if (PixelBuffer.IsItPossibleToContainsAlpha(bmp.Format))
                 {
-                    pixelBuffer = new PixelBuffer(bmp);
-                    if (this.library.WebPPictureImportBGR(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
-                        throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGR");
-                }
-                else if (bmp.Format.BitsPerPixel == 32)
-                {
-                    pixelBuffer = new PixelBuffer(bmp);
+                    pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32);
                     if (this.library.WebPPictureImportBGRA(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
                         throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGRA");
                 }
                 else
                 {
-                    throw new NotSupportedException("Image format not supported.");
+                    pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgr24);
+                    if (this.library.WebPPictureImportBGR(ref wpic, pixelBuffer.GetPointer(), pixelBuffer.BackBufferStride) != 1)
+                        throw new OutOfMemoryException("Can´t allocate memory in WebPPictureImportBGRA");
                 }
             }
             return pixelBuffer;
@@ -893,8 +883,6 @@ namespace WebPWrapper.WPF
                 return this.library.WebPPictureImportBGRA(ref wpic, buffer, stride);
             else if (pixelFormat == PixelFormats.Rgb24)
                 return this.library.WebPPictureImportRGB(ref wpic, buffer, stride);
-            else if (pixelFormat == PixelFormats.Indexed8)
-                return this.library.WebPPictureImportBGRA(ref wpic, buffer, stride);
             else
             {
                 if (pixelFormat.BitsPerPixel == 24)
@@ -939,26 +927,17 @@ namespace WebPWrapper.WPF
                 using (PixelBuffer pixelBuffer = new PixelBuffer(bmp))
                     size = this.library.WebPEncodeRGB(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
             }
-            else if (bmp.Format == PixelFormats.Indexed8)
-            {
-                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
-                    size = this.library.WebPEncodeBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
-            }
             else
             {
-                if (bmp.Format.BitsPerPixel == 24)
+                if (PixelBuffer.IsItPossibleToContainsAlpha(bmp.Format))
                 {
-                    using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgr24))
-                        size = this.library.WebPEncodeBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
-                }
-                else if (bmp.Format.BitsPerPixel == 32)
-                {
-                    using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
+                    using (var pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
                         size = this.library.WebPEncodeBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
                 }
                 else
                 {
-                    throw new NotSupportedException("Image format not supported.");
+                    using (var pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgr24))
+                        size = this.library.WebPEncodeBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, quality, out output);
                 }
             }
             return size;
@@ -997,26 +976,17 @@ namespace WebPWrapper.WPF
                 using (PixelBuffer pixelBuffer = new PixelBuffer(bmp))
                     size = this.library.WebPEncodeLosslessRGB(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
             }
-            else if (bmp.Format == PixelFormats.Indexed8)
-            {
-                using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
-                    size = this.library.WebPEncodeLosslessBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
-            }
             else
             {
-                if (bmp.Format.BitsPerPixel == 24)
+                if (PixelBuffer.IsItPossibleToContainsAlpha(bmp.Format))
                 {
-                    using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgr24))
-                        size = this.library.WebPEncodeLosslessBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
-                }
-                else if (bmp.Format.BitsPerPixel == 32)
-                {
-                    using (PixelBuffer pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
+                    using (var pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgra32))
                         size = this.library.WebPEncodeLosslessBGRA(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
                 }
                 else
                 {
-                    throw new NotSupportedException("Image format not supported.");
+                    using (var pixelBuffer = new PixelBuffer(bmp, PixelFormats.Bgr24))
+                        size = this.library.WebPEncodeLosslessBGR(pixelBuffer.GetPointer(), pixelBuffer.PixelWidth, pixelBuffer.PixelHeight, pixelBuffer.BackBufferStride, out output);
                 }
             }
             return size;

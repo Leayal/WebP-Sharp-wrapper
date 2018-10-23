@@ -233,7 +233,7 @@ namespace WebPWrapper.WPF
         /// It should works for common case, although it's not good at all
         /// </summary>
         /// <returns></returns>
-        public static bool IsItPossibleToContainsAlpha(PixelFormat format)
+        internal static bool IsItPossibleToContainsAlpha(PixelFormat format)
         {
             var propertyinfo = PixelFormat_HasAlphaProperty.Value;
             if (propertyinfo == null)
