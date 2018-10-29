@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/f5r2ngwh29b6ex49?svg=true)](https://ci.appveyor.com/project/Leayal/webp-sharp-wrapper)
+
 # WebP-Sharp-wrapper
 `libwebp` wrapper for .NET WPF environment in C#. ~~The most complete wrapper in pure managed C#~~.
 
