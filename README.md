@@ -9,6 +9,14 @@ All the APIs, except the simple ones, will enable multi-threading by default.
 
 The wrapper is in safe managed code. No need external dll except libwebp_x86.dll and libwebp_x64.dll. The wrapper work in 32, 64 bit or ANY (auto swith to the apropiate library).
 
+Or you can dynamically set the library path when init a new WebP instance.
+```csharp
+using (WebP webp = new WebP(System.Environment.Is64BitProcess ? @"path\to\the\x64.dll" : @"path\to\x86.dll"))
+{
+  BitmapSource decoded = webp.DecodeFromFile("test.webp");
+  WebPImage encoded = webp.EncodeToFile("test2.webp");
+}
+```
 
 The code is ~~full~~ comented and include simple example for using the wrapper.
 
@@ -16,7 +24,7 @@ The code is ~~full~~ comented and include simple example for using the wrapper.
 Load WebP image for WebP file
 ```C#
 using (WebP webp = new WebP())
-  BitmapSource bmp = webp.DecodeFile("test.webp");
+  BitmapSource bmp = webp.DecodeFromFile("test.webp");
 ```
 
 Decode WebP filename to BitmapSource and display to Image control
