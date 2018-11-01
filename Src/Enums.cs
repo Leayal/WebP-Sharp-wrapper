@@ -11,7 +11,7 @@ namespace WebPWrapper.WPF
         /// </summary>
         AsMuchAsPossible = 0,
         /// <summary>
-        /// Tell the encoder to use as less memory as possible. May result in slower encode speed.
+        /// Tell the encoder to use as less memory as possible. May result in slower encode speed. This will overwrite <see cref="AsMuchAsPossible"/>.
         /// </summary>
         LowMemoryCompressionMode = 1 << 0,
         /// <summary>

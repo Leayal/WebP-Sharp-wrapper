@@ -12,7 +12,8 @@ namespace WebPWrapper.WPF.LowLevel
     /// </summary>
     internal class Libwebp : ILibwebp, IDisposable
     {
-        private static readonly ConcurrentDictionary<string, Libwebp> cache = new ConcurrentDictionary<string, Libwebp>(StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<string, string> cache_search = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<string, Libwebp> cache_library = new ConcurrentDictionary<string, Libwebp>(StringComparer.OrdinalIgnoreCase);
         
         private int partners;
         private SafeLibraryHandle libraryHandle;
@@ -62,19 +63,26 @@ namespace WebPWrapper.WPF.LowLevel
                 throw new ArgumentNullException("library_path");
 
             Libwebp myLib;
-            if (!cache.TryGetValue(library_path, out myLib))
+            if (!cache_search.TryGetValue(library_path, out var fullpath))
+            {
+                fullpath = library_path;
+            }
+
+            if (!cache_library.TryGetValue(fullpath, out myLib))
             {
                 // Let's leave the full-load library for another time.
                 // Make use of LoadLibrary to search for the library
                 var loadedLib = new Libwebp(library_path, true);
 
                 // Check if the library is already existed in cache
-                var addedOrNot = cache.GetOrAdd(loadedLib.LibraryPath, loadedLib);
+                var addedOrNot = cache_library.GetOrAdd(loadedLib.LibraryPath, loadedLib);
 
                 if (addedOrNot == loadedLib)
                 {
                     // It's added successfully. Which means loadedLib is (in a valid way) the first-arrive in cache.
                     // Let's use it.
+                    cache_search[library_path] = loadedLib.LibraryPath;
+
                     myLib = loadedLib;
                 }
                 else
@@ -93,15 +101,16 @@ namespace WebPWrapper.WPF.LowLevel
         internal static void DeInit(WebP who)
         {
             Libwebp myLib = who.library;
-            string library_path = who.library._libpath;
             if (Interlocked.Decrement(ref myLib.partners) == 0)
             {
-                if (cache.TryRemove(library_path, out myLib))
-                {
-                    // Unload the library when there is no WebP instance use the library anymore.
-                    myLib.Dispose();
-                    myLib = null;
-                }
+                if (!cache_search.TryRemove(who.Filename, out string library_path))
+                    library_path = myLib._libpath;
+
+                cache_library.TryRemove(library_path, out myLib);
+
+                // Unload the library when there is no WebP instance use the library anymore.
+                myLib.Dispose();
+                myLib = null;
             }
         }
 
@@ -860,7 +869,7 @@ namespace WebPWrapper.WPF.LowLevel
         public bool IsFunctionExists(string functionName)
         {
             this.AssertLibraryCallFailure();
-            if (this._functionPointer.TryGetValue(functionName, out var throwAway))
+            if (this._functionPointer.TryGetValue(functionName, out _))
             {
                 return true;
             }
@@ -929,22 +938,40 @@ namespace WebPWrapper.WPF.LowLevel
         /// </summary>
         public void Dispose()
         {
-            if (this.libraryHandle == null || this.libraryHandle.IsClosed || this.libraryHandle.IsInvalid)
-                return;
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (this._functionPointer != null)
+                    this._functionPointer.Clear();
+
+                if (this._methods != null)
+                    this._methods.Clear();
+
+                if (this.libraryHandle != null)
+                {
+                    if (!this.libraryHandle.IsClosed && !this.libraryHandle.IsInvalid)
+                        this.libraryHandle.Close();
+
+                    this.libraryHandle.Dispose();
+                }
+            }
             this._canEncode = false;
             this._canDecode = false;
 
-            if (this._functionPointer != null)
-                this._functionPointer.Clear();
             this._functionPointer = null;
-
-            if (this._methods != null)
-                this._methods.Clear();
             this._methods = null;
 
-            this.libraryHandle.Close();
-            this.libraryHandle.Dispose();
+            this.libraryHandle = null;
+        }
+
+        ~Libwebp()
+        {
+            this.Dispose(false);
         }
     }
 }

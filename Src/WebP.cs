@@ -47,6 +47,7 @@ namespace WebPWrapper.WPF
         }, LazyThreadSafetyMode.ExecutionAndPublication);
         internal ChunkPool ManagedChunkPool;
         internal Libwebp library;
+        private string relativepath;
         private readonly EncoderOptions defaultEncodeOption;
         private readonly DecoderOptions defaultDecodeOption;
 
@@ -128,6 +129,7 @@ namespace WebPWrapper.WPF
             this.defaultDecodeOption = defaultDecodeOptions;
             this.defaultEncodeOption = defaultEncodeOptions;
 
+            this.relativepath = library_path;
             this.library = Libwebp.Init(this, library_path);
         }
         #endregion
@@ -243,23 +245,19 @@ namespace WebPWrapper.WPF
             if ((offset + count) > webpData.Length)
                 throw new ArgumentException("Count exceeded the buffer length", "count");
 
-            GCHandle handle = GCHandle.Alloc(webpData, GCHandleType.Pinned);
-            
-            try
+            unsafe
             {
-                if (offset == 0)
+                fixed (byte* pointer = webpData)
                 {
-                    return this.Decode(handle.AddrOfPinnedObject(), count, decodeOptions);
+                    if (offset == 0)
+                    {
+                        return this.Decode(new IntPtr(pointer), count, decodeOptions);
+                    }
+                    else
+                    {
+                        return this.Decode(IntPtr.Add(new IntPtr(pointer), offset), count, decodeOptions);
+                    }
                 }
-                else
-                {
-                    return this.Decode(IntPtr.Add(handle.AddrOfPinnedObject(), offset), count, decodeOptions);
-                }
-            }
-            finally
-            {
-                if (handle.IsAllocated)
-                    handle.Free();
             }
         }
 
@@ -372,14 +370,13 @@ namespace WebPWrapper.WPF
                     bitmap.Unlock();
                 }
 
-                this.library.WebPFreeDecBuffer(ref config.output);
-
                 return bitmap;
             }
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.Decode", ex); }
             finally
             {
-
+                if (config.output.u.RGBA.rgba != IntPtr.Zero)
+                    this.library.WebPFreeDecBuffer(ref config.output);
             }
         }
 
@@ -427,16 +424,22 @@ namespace WebPWrapper.WPF
                 config.options.scaled_width = width;
                 config.options.scaled_height = height;
 
-
-                // Create a BitmapData and Lock all pixels to be written
-                PixelFormat format = PixelFormats.Pbgra32;
+                PixelFormat format;
+                if (config.input.has_alpha == 0)
+                {
+                    format = PixelFormats.Bgr32;
+                    config.output.colorspace = WEBP_CSP_MODE.MODE_BGRA;
+                }
+                else
+                {
+                    format = PixelFormats.Pbgra32;
+                    config.output.colorspace = WEBP_CSP_MODE.MODE_bgrA;
+                }
 
                 _stride = width * (format.BitsPerPixel / 8);
                 outputsize = height * _stride;
                 outputPointer = Marshal.AllocHGlobal(outputsize);
 
-                // Specify the output format
-                config.output.colorspace = WEBP_CSP_MODE.MODE_bgrA;
                 config.output.u.RGBA.rgba = outputPointer;
                 config.output.u.RGBA.stride = _stride;
                 config.output.u.RGBA.size = (UIntPtr)outputsize;
@@ -507,15 +510,23 @@ namespace WebPWrapper.WPF
                 config.options.scaled_width = width;
                 config.options.scaled_height = height;
 
-                // Create a BitmapData and Lock all pixels to be written
-                PixelFormat format = PixelFormats.Pbgra32;
+                // Specify the output format
+                PixelFormat format;
+                if (config.input.has_alpha == 0)
+                {
+                    format = PixelFormats.Bgr32;
+                    config.output.colorspace = WEBP_CSP_MODE.MODE_BGRA;
+                }
+                else
+                {
+                    format = PixelFormats.Pbgra32;
+                    config.output.colorspace = WEBP_CSP_MODE.MODE_bgrA;
+                }
 
                 _stride = width * (format.BitsPerPixel / 8);
                 outputsize = height * _stride;
                 outputPointer = Marshal.AllocHGlobal(outputsize);
 
-                // Specify the output format
-                config.output.colorspace = WEBP_CSP_MODE.MODE_bgrA;
                 config.output.u.RGBA.rgba = outputPointer;
                 config.output.u.RGBA.stride = _stride;
                 config.output.u.RGBA.size = (UIntPtr)(outputsize);
@@ -528,7 +539,7 @@ namespace WebPWrapper.WPF
                 if (result != VP8StatusCode.VP8_STATUS_OK)
                     throw new Exception("Failed WebPDecode with error " + result);
 
-                BitmapSource bmp = CachedBitmap.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, outputPointer, outputsize, _stride);
+                BitmapSource bmp = CachedBitmap.Create(width, height, 96, 96, format, null, outputPointer, outputsize, _stride);
 
                 this.library.WebPFreeDecBuffer(ref config.output);
 
@@ -1024,20 +1035,20 @@ namespace WebPWrapper.WPF
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.GetVersion"); }
         }
 
-        /// <summary>
-        /// Gets a value indicating whether the current loaded library supports WebP encoding.
-        /// </summary>
+        /// <summary>Gets a value indicating whether the current loaded library supports WebP encoding.</summary>
         public bool CanEncode => this.library.CanEncode;
 
-        /// <summary>
-        /// Gets a value indicating whether the current loaded library supports WebP decoding.
-        /// </summary>
+        /// <summary>Gets a value indicating whether the current loaded library supports WebP decoding.</summary>
         public bool CanDecode => this.library.CanDecode;
 
-        /// <summary>
-        /// Return low-level access to unmanaged code. USE IT AT YOUR OWN RISK.
-        /// </summary>
-        /// <returns></returns>
+        /// <summary>Gets the library path which is provided to create this <see cref="WebP"/> instance.</summary>
+        public string Filename => this.relativepath;
+
+        /// <summary>Gets the full path of the imported library.</summary>
+        public string FullFilename => this.library.LibraryPath;
+
+        /// <summary>Return low-level access to unmanaged code. USE IT AT YOUR OWN RISK.</summary>
+        /// <return>An interface of low-level native library, it should provide most (if not all) of neccessary functions of the native library.</return>
         public ILibwebp GetDirectAccessToLibrary()
         {
             return this.library;
@@ -1228,13 +1239,26 @@ namespace WebPWrapper.WPF
         {
             if (Interlocked.Exchange(ref this._disposed, 1) == 0)
             {
-                Libwebp.DeInit(this);
-
-                this.ManagedChunkPool.Dispose();
-                this.library = null;
+                this.Dispose(true);
 
                 GC.SuppressFinalize(this);
             }
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                this.ManagedChunkPool.Dispose();
+            }
+            this.ManagedChunkPool = null;
+            Libwebp.DeInit(this);
+            this.library = null;
+        }
+
+        ~WebP()
+        {
+            this.Dispose(false);
         }
         #endregion
 
