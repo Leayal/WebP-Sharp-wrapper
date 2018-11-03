@@ -50,6 +50,7 @@ namespace WebPWrapper.WPF
         private string relativepath;
         private readonly EncoderOptions defaultEncodeOption;
         private readonly DecoderOptions defaultDecodeOption;
+        private readonly int chunkpoolBlockSize;
 
         #region | Constructors |
         /// <summary>
@@ -63,6 +64,7 @@ namespace WebPWrapper.WPF
         /// <summary>
         /// Create a new WebP instance with given buffer pool size.
         /// </summary>
+        /// <param name="bufferBlockSize">The size (in bytes) of each buffer block in the cache pool (for re-using buffer). Set to 0 to disable buffer pool. Size smaller than 1024 will be adjusted to 1024. Default is 8192.</param>
         /// <remarks>
         /// For backward-compatible only
         /// </remarks>
@@ -84,37 +86,48 @@ namespace WebPWrapper.WPF
         /// Create a new WebP instance with default buffer pool size.
         /// </summary>
         /// <param name="library_path">The path to libwebp dll file</param>
+        /// <param name="defaultEncodeOptions">The default option which will be used for all non-simple encoding operations</param>
         public WebP(string library_path, EncoderOptions defaultEncodeOptions) : this(library_path, defaultEncodeOptions, RuntimeValue.DefaultBufferSize) { }
 
         /// <summary>
         /// Create a new WebP instance with default buffer pool size.
         /// </summary>
         /// <param name="library_path">The path to libwebp dll file</param>
+        /// <param name="defaultDecodeOptions">The default option which will be used for all non-simple decoding operations</param>
         public WebP(string library_path, DecoderOptions defaultDecodeOptions) : this(library_path, defaultDecodeOptions, RuntimeValue.DefaultBufferSize) { }
 
         /// <summary>
         /// Create a new WebP instance with default buffer pool size.
         /// </summary>
         /// <param name="library_path">The path to libwebp dll file</param>
+        /// <param name="defaultEncodeOptions">The default option which will be used for all non-simple encoding operations</param>
+        /// <param name="bufferBlockSize">The size (in bytes) of each buffer block in the cache pool (for re-using buffer). Set to 0 to disable buffer pool. Size smaller than 1024 will be adjusted to 1024. Default is 8192.</param>
         public WebP(string library_path, EncoderOptions defaultEncodeOptions, int bufferBlockSize) : this(library_path, defaultEncodeOptions, new DecoderOptions(), bufferBlockSize) { }
 
         /// <summary>
         /// Create a new WebP instance with default buffer pool size.
         /// </summary>
         /// <param name="library_path">The path to libwebp dll file</param>
+        /// <param name="defaultDecodeOptions">The default option which will be used for all non-simple decoding operations</param>
+        /// <param name="bufferBlockSize">The size (in bytes) of each buffer block in the cache pool (for re-using buffer). Set to 0 to disable buffer pool. Size smaller than 1024 will be adjusted to 1024. Default is 8192.</param>
         public WebP(string library_path, DecoderOptions defaultDecodeOptions, int bufferBlockSize) : this(library_path, new EncoderOptions(), defaultDecodeOptions, bufferBlockSize) { }
 
         /// <summary>
         /// Create a new WebP instance with default buffer pool size.
         /// </summary>
         /// <param name="library_path">The path to libwebp dll file</param>
+        /// <param name="defaultEncodeOptions">The default option which will be used for all non-simple encoding operations</param>
+        /// <param name="defaultDecodeOptions">The default option which will be used for all non-simple decoding operations</param>
+        /// <param name="bufferBlockSize">The size (in bytes) of each buffer block in the cache pool (for re-using buffer). Set to 0 to disable buffer pool. Size smaller than 1024 will be adjusted to 1024. Default is 8192.</param>
         public WebP(string library_path, EncoderOptions defaultEncodeOptions, DecoderOptions defaultDecodeOptions) : this(library_path, defaultEncodeOptions, defaultDecodeOptions, RuntimeValue.DefaultBufferSize) { }
 
         /// <summary>
         /// Create a new WebP instance with given buffer pool size.
         /// </summary>
         /// <param name="library_path">The path to libwebp dll file</param>
-        /// <param name="bufferBlockSize">The size (in bytes) of each buffer block in the cache pool (for re-using buffer). Set to 0 to disable buffer pool. Size smaller than 1024 will be adjusted to 1024.</param>
+        /// <param name="defaultEncodeOptions">The default option which will be used for all non-simple encoding operations</param>
+        /// <param name="defaultDecodeOptions">The default option which will be used for all non-simple decoding operations</param>
+        /// <param name="bufferBlockSize">The size (in bytes) of each buffer block in the cache pool (for re-using buffer). Set to 0 to disable buffer pool. Size smaller than 1024 will be adjusted to 1024. Default is 8192.</param>
         public WebP(string library_path, EncoderOptions defaultEncodeOptions, DecoderOptions defaultDecodeOptions, int bufferBlockSize)
         {
             if (bufferBlockSize < 0)
@@ -125,6 +138,8 @@ namespace WebPWrapper.WPF
                 this.ManagedChunkPool = new ChunkPool(1024);
             else
                 this.ManagedChunkPool = new ChunkPool(bufferBlockSize);
+
+            this.chunkpoolBlockSize = bufferBlockSize;
 
             this.defaultDecodeOption = defaultDecodeOptions;
             this.defaultEncodeOption = defaultEncodeOptions;
@@ -170,41 +185,74 @@ namespace WebPWrapper.WPF
             if (longsize > int.MaxValue)
                 throw new IndexOutOfRangeException($"File too big to be handle in memory. Even bigger than {int.MaxValue} bytes (around 2GB). Because 'int' can go as far as that.");
 
-            IntPtr memory = IntPtr.Zero;
-
             try
             {
-                
                 int size = (int)longsize;
                 // incremental APis are not exposed yet. So we can't just stream chunks to the decoder.
 
-                memory = Marshal.AllocHGlobal(size);
-
-                int num = UnsafeNativeMethods.ReadFileUnsafe(fs, memory, 0, size, out var hr);
-                if (num == -1)
+                if (size > this.chunkpoolBlockSize)
                 {
-                    switch (hr)
+                    IntPtr memory = IntPtr.Zero;
+                    try
                     {
-                        case 109:
-                            num = 0;
-                            break;
-                        default:
-                            Marshal.ThrowExceptionForHR(hr);
-                            break;
+                        memory = Marshal.AllocHGlobal(size);
+
+                        int num = UnsafeNativeMethods.ReadFileUnsafe(fs, memory, 0, size, out var hr);
+                        if (num == -1)
+                        {
+                            switch (hr)
+                            {
+                                case 109:
+                                    num = 0;
+                                    break;
+                                default:
+                                    Marshal.ThrowExceptionForHR(hr);
+                                    break;
+                            }
+                        }
+
+                        if (num >= 0)
+                        {
+                            BitmapSource result;
+                            unsafe
+                            {
+                                result = this.Decode(memory, size, options);
+                            }
+
+                            return result;
+                        }
+                        throw new IOException($"Something went wrong. Make sure that the stream's position is correct?");
+                    }
+                    finally
+                    {
+                        if (memory != IntPtr.Zero)
+                            Marshal.FreeHGlobal(memory);
                     }
                 }
-
-                if (num >= 0)
+                else
                 {
-                    BitmapSource result;
-                    unsafe
+                    var buffer = this.ManagedChunkPool.RequestChunk();
+                    try
                     {
-                        result = this.Decode(memory, size, options);
+                        if (fs.Read(buffer.Buffer, 0, buffer.Buffer.Length) != 0)
+                        {
+                            BitmapSource result;
+                            unsafe
+                            {
+                                fixed (byte* b = buffer.Buffer)
+                                {
+                                    result = this.Decode(new IntPtr(b), size, options);
+                                }
+                            }
+                            return result;
+                        }
+                        throw new IOException($"Something went wrong. Make sure that the stream's position is correct?");
                     }
-
-                    return result;
+                    finally
+                    {
+                        this.ManagedChunkPool.ReturnToPool(buffer);
+                    }
                 }
-                throw new IOException($"Something went wrong.");
             }
             catch (Exception ex)
             {
@@ -212,9 +260,6 @@ namespace WebPWrapper.WPF
             }
             finally
             {
-                if (memory != IntPtr.Zero)
-                    Marshal.FreeHGlobal(memory);
-
                 if (!leaveopen)
                     fs.Dispose();
             }
@@ -409,6 +454,8 @@ namespace WebPWrapper.WPF
             IntPtr outputPointer = IntPtr.Zero;
             int _stride = 0,
                 outputsize = 0;
+            GCHandle bufferpinner = new GCHandle();
+            ManagedMemoryChunk chunk = null;
 
             try
             {
@@ -438,7 +485,17 @@ namespace WebPWrapper.WPF
 
                 _stride = width * (format.BitsPerPixel / 8);
                 outputsize = height * _stride;
-                outputPointer = Marshal.AllocHGlobal(outputsize);
+
+                if (outputsize > this.chunkpoolBlockSize)
+                {
+                    outputPointer = Marshal.AllocHGlobal(outputsize);
+                }
+                else
+                {
+                    chunk = this.ManagedChunkPool.RequestChunk();
+                    bufferpinner = GCHandle.Alloc(chunk.Buffer, GCHandleType.Pinned);
+                    outputPointer = bufferpinner.AddrOfPinnedObject();
+                }
 
                 config.output.u.RGBA.rgba = outputPointer;
                 config.output.u.RGBA.stride = _stride;
@@ -461,8 +518,16 @@ namespace WebPWrapper.WPF
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.Thumbnail"); }
             finally
             {
-                if (outputPointer != IntPtr.Zero)
-                    Marshal.FreeHGlobal(outputPointer);
+                if (chunk == null)
+                {
+                    if (outputPointer != IntPtr.Zero)
+                        Marshal.FreeHGlobal(outputPointer);
+                }
+                else
+                {
+                    if (bufferpinner.IsAllocated)
+                        bufferpinner.Free();
+                }
             }
         }
 
@@ -495,6 +560,8 @@ namespace WebPWrapper.WPF
             IntPtr outputPointer = IntPtr.Zero;
             int _stride = 0,
                 outputsize = 0;
+            GCHandle bufferpinner = new GCHandle();
+            ManagedMemoryChunk chunk = null;
 
             try
             {
@@ -525,7 +592,17 @@ namespace WebPWrapper.WPF
 
                 _stride = width * (format.BitsPerPixel / 8);
                 outputsize = height * _stride;
-                outputPointer = Marshal.AllocHGlobal(outputsize);
+
+                if (outputsize > this.chunkpoolBlockSize)
+                {
+                    outputPointer = Marshal.AllocHGlobal(outputsize);
+                }
+                else
+                {
+                    chunk = this.ManagedChunkPool.RequestChunk();
+                    bufferpinner = GCHandle.Alloc(chunk.Buffer, GCHandleType.Pinned);
+                    outputPointer = bufferpinner.AddrOfPinnedObject();
+                }
 
                 config.output.u.RGBA.rgba = outputPointer;
                 config.output.u.RGBA.stride = _stride;
@@ -548,8 +625,16 @@ namespace WebPWrapper.WPF
             catch (Exception ex) { throw new Exception(ex.Message + "\r\nIn WebP.Thumbnail"); }
             finally
             {
-                if (outputPointer != IntPtr.Zero)
-                    Marshal.FreeHGlobal(outputPointer);
+                if (chunk == null)
+                {
+                    if (outputPointer != IntPtr.Zero)
+                        Marshal.FreeHGlobal(outputPointer);
+                }
+                else
+                {
+                    if (bufferpinner.IsAllocated)
+                        bufferpinner.Free();
+                }
             }
         }
         #endregion

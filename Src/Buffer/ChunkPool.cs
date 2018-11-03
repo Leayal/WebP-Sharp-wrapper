@@ -14,6 +14,8 @@ namespace WebPWrapper.WPF.Buffer
             this.chunkList = new ConcurrentBag<ManagedMemoryChunk>();
         }
 
+        public int BlockSize => this._chunkSize;
+
         public void ReturnToPool(ManagedMemoryChunk chunk)
         {
             this.chunkList.Add(chunk);

@@ -7,7 +7,7 @@ namespace WebPWrapper.WPF.Helper
 {
     internal static class RuntimeValue
     {
-        internal const int DefaultBufferSize = 4096;
+        internal const int DefaultBufferSize = 8192;
 
         internal static readonly bool is64bit = Environment.Is64BitProcess;
 

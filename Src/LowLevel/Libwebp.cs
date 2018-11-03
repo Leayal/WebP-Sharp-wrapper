@@ -17,7 +17,7 @@ namespace WebPWrapper.WPF.LowLevel
         
         private int partners;
         private SafeLibraryHandle libraryHandle;
-        private ConcurrentDictionary<Type, Delegate> _methods;
+        private ConcurrentDictionary<DelegateIdentity, Delegate> _methods;
         private ConcurrentDictionary<string, IntPtr> _functionPointer;
         private string _libpath;
         private bool _canEncode, _canDecode;
@@ -163,7 +163,7 @@ namespace WebPWrapper.WPF.LowLevel
             else
             {
                 this._functionPointer = new ConcurrentDictionary<string, IntPtr>();
-                this._methods = new ConcurrentDictionary<Type, Delegate>();
+                this._methods = new ConcurrentDictionary<DelegateIdentity, Delegate>();
                 this.libraryHandle = handle;
                 System.Text.StringBuilder sb = new System.Text.StringBuilder(Define.MAX_PATH);
                 if (UnsafeNativeMethods.GetModuleFileName(handle, sb, sb.Capacity) > 0)
@@ -285,12 +285,6 @@ namespace WebPWrapper.WPF.LowLevel
 
                     // WebPFree
                     this.AssertFunctionLoadFailure<NativeDelegates.WebPFree>("WebPFree");
-
-                    // WebPGetDecoderVersion
-                    this.AssertFunctionLoadFailure<NativeDelegates.WebPGetVersion>("WebPGetDecoderVersion");
-
-                    // WebPGetEncoderVersion
-                    this.AssertFunctionLoadFailure<NativeDelegates.WebPGetVersion>("WebPGetEncoderVersion");
 
                     // WebPPictureDistortion
                     this.AssertFunctionLoadFailure<NativeDelegates.WebPGetVersion>("WebPPictureDistortion");
@@ -832,8 +826,9 @@ namespace WebPWrapper.WPF.LowLevel
             this.AssertLibraryCallFailure();
 
             Type delegateType = typeof(TDelegate);
+            DelegateIdentity identity = new DelegateIdentity(delegateType, functionName);
 
-            if ((this._methods.TryGetValue(delegateType, out var outdelegate)) && (outdelegate is TDelegate result))
+            if ((this._methods.TryGetValue(identity, out var outdelegate)) && (outdelegate is TDelegate result))
             {
                 function = result;
                 return true;
@@ -855,7 +850,7 @@ namespace WebPWrapper.WPF.LowLevel
                 }
 
                 TDelegate foundFunction = (TDelegate)Marshal.GetDelegateForFunctionPointer(p, delegateType);
-                this._methods.TryAdd(delegateType, foundFunction);
+                this._methods.TryAdd(identity, foundFunction);
                 function = foundFunction;
                 return true;
             }
@@ -887,12 +882,7 @@ namespace WebPWrapper.WPF.LowLevel
 
         private void AssertFunctionLoadFailure<TDelegate>(string functionName, bool throwOnNotFound = true) where TDelegate : Delegate
         {
-            TDelegate func_delegate;
-            if (this.TryGetFunction<TDelegate>(functionName, out func_delegate))
-            {
-                this._methods.TryAdd(typeof(TDelegate), func_delegate);
-            }
-            else
+            if (!this.TryGetFunction<TDelegate>(functionName, out _))
             {
                 if (throwOnNotFound)
                 {

@@ -57,6 +57,7 @@
     <Compile Include="InvalidOptionValueException.cs" />
     <Compile Include="LowLevel\Define.cs" />
     <Compile Include="EncoderOptions.cs" />
+    <Compile Include="LowLevel\DelegateIdentifier.cs" />
     <Compile Include="LowLevel\Enums.cs" />
     <Compile Include="Helper\PEReader.cs" />
     <Compile Include="Helper\Helpers.cs" />
