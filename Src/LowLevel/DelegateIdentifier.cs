@@ -15,7 +15,7 @@ namespace WebPWrapper.WPF.LowLevel
 
         public override bool Equals(object obj)
         {
-            if (obj is DelegateIdentifier identifier)
+            if (obj is DelegateIdentity identifier)
             {
                 return this.Equals(identifier);
             }
