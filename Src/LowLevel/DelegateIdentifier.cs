@@ -15,13 +15,16 @@ namespace WebPWrapper.WPF.LowLevel
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as DelegateIdentity);
+            if (obj is DelegateIdentifier identifier)
+            {
+                return this.Equals(identifier);
+            }
+            return false;
         }
 
         public bool Equals(DelegateIdentity other)
         {
-            return ((other != null) &&
-                   (this.DelegateType == other.DelegateType) &&
+            return ((this.DelegateType == other.DelegateType) &&
                    (this.FunctionName == other.FunctionName));
         }
 
@@ -36,27 +39,6 @@ namespace WebPWrapper.WPF.LowLevel
             hashCode = hashCode * -1521134295 + this.DelegateType.GetHashCode();
             hashCode = hashCode * -1521134295 + this.FunctionName.GetHashCode();
             return hashCode;
-        }
-
-        public static bool operator ==(DelegateIdentity identity1, DelegateIdentity identity2)
-        {
-            if (identity1 != null)
-            {
-                return identity1.Equals(identity2);
-            }
-            else if (identity2 != null)
-            {
-                return identity2.Equals(identity1);
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        public static bool operator !=(DelegateIdentity identity1, DelegateIdentity identity2)
-        {
-            return !(identity1 == identity2);
         }
     }
 
