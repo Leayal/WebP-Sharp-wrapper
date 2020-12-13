@@ -3,13 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29215.179
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebPWrapper-WPF", "Src\WebPWrapper-WPF.csproj", "{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebPWrapper", "WebPWrapper\WebPWrapper.csproj", "{26422BCA-41F9-49BF-8367-034F910065A9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebPWrapper-WPF-Core", "WebPWrapper-WPF-Core\WebPWrapper-WPF-Core.csproj", "{BD0278A9-3ABE-4058-B73B-5E0D11201FB2}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebPWrapper-Test", "WebPWrapper-Test\WebPWrapper-Test.csproj", "{8AD3AC57-290B-433C-BD8E-0F3780D781D2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebPWrapper-Test", "WebPWrapper-Test\WebPWrapper-Test.csproj", "{8AD3AC57-290B-433C-BD8E-0F3780D781D2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,18 +13,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{32D4906B-2A7B-4383-BDF1-1CBEC86EAAFA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{26422BCA-41F9-49BF-8367-034F910065A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{26422BCA-41F9-49BF-8367-034F910065A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{26422BCA-41F9-49BF-8367-034F910065A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{26422BCA-41F9-49BF-8367-034F910065A9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BD0278A9-3ABE-4058-B73B-5E0D11201FB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BD0278A9-3ABE-4058-B73B-5E0D11201FB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BD0278A9-3ABE-4058-B73B-5E0D11201FB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BD0278A9-3ABE-4058-B73B-5E0D11201FB2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8AD3AC57-290B-433C-BD8E-0F3780D781D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8AD3AC57-290B-433C-BD8E-0F3780D781D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8AD3AC57-290B-433C-BD8E-0F3780D781D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
