@@ -422,7 +422,7 @@ namespace WebPWrapper.LowLevel
         /// Otherwise returns the pointer to the internal representation. This structure
         /// is read-only, tied to <seealso cref="WebPIDecoder"/>'s lifespan and should not be modified.
         /// </returns>
-        WebPDecBuffer WebPIDecodedArea(IntPtr idec, ref int left, ref int top, ref int width, ref int height);
+        IntPtr WebPIDecodedArea(IntPtr idec, ref int left, ref int top, ref int width, ref int height);
 
         /// <summary>Releases memory returned by the WebPEncode</summary>
         /// <param name="p">Pointer to memory</param>
