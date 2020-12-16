@@ -28,7 +28,14 @@ namespace WebPWrapper.LowLevel
     {
         /// <summary>Lossless encoding (0=lossy(default), 1=lossless).</summary>
         public int lossless;
-        /// <summary>Between 0 (smallest file) and 100 (biggest)</summary>
+        /// <summary>The compression quality</summary>
+        /// <remarks>
+        /// Between 0 and 100. For lossy, 0 gives the smallest
+        /// size and 100 the largest. For lossless, this
+        /// parameter is the amount of effort put into the
+        /// compression: 0 is the fastest but gives larger
+        /// files compared to the slowest, but best, 100.
+        /// </remarks>
         public float quality;
         /// <summary>Quality/speed trade-off (0=fast, 6=slower-better)</summary>
         public int method;
@@ -153,7 +160,7 @@ namespace WebPWrapper.LowLevel
         /// <summary>Main flag for encoder selecting between ARGB or YUV input. Recommended to use ARGB input (*argb, argb_stride) for lossless, and YUV input (*y, *u, *v, etc.) for lossy</summary>
         public int use_argb;
         /// <summary>colorspace: should be YUV420 for now (=Y'CbCr). Value = 0</summary>
-        public UInt32 colorspace;
+        public WebPEncCSP colorspace;
         /// <summary>Width of picture (less or equal to WEBP_MAX_DIMENSION)</summary>
         public int width;
         /// <summary>Height of picture (less or equal to WEBP_MAX_DIMENSION)</summary>
@@ -183,20 +190,22 @@ namespace WebPWrapper.LowLevel
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3, ArraySubType = UnmanagedType.U4)]
         private uint[] pad2;
         /// <summary>Byte-emission hook, to store compressed bytes as they are ready.</summary>
-        public IntPtr writer;
+        [MarshalAs(UnmanagedType.FunctionPtr)]
+        public Delegates.WebPWriterFunction writer;
         /// <summary>Can be used by the writer.</summary>
         public IntPtr custom_ptr;
-        // map for extra information (only for lossy compression mode)
-        /// <summary>1: intra type, 2: segment, 3: quant, 4: intra-16 prediction mode, 5: chroma prediction mode, 6: bit cost, 7: distortion</summary>
+        /// <summary>map for extra information (only for lossy compression mode)</summary>
+        /// <remarks>1: intra type, 2: segment, 3: quant, 4: intra-16 prediction mode, 5: chroma prediction mode, 6: bit cost, 7: distortion</remarks>
         public int extra_info_type;
         /// <summary>if not NULL, points to an array of size ((width + 15) / 16) * ((height + 15) / 16) that will be filled with a macroblock map, depending on extra_info_type.</summary>
         public IntPtr extra_info;
         /// <summary>Pointer to side statistics (updated only if not NULL)</summary>
-        public IntPtr stats;
+        public WebPAuxStats stats;
         /// <summary>Error code for the latest error encountered during encoding</summary>
-        public UInt32 error_code;
+        public WebPEncodingError error_code;
         /// <summary>If not NULL, report progress during encoding.</summary>
-        public IntPtr progress_hook;
+        [MarshalAs(UnmanagedType.FunctionPtr)]
+        public Delegates.WebPProgressHook progress_hook;
         /// <summary>this field is free to be set to any value and used during callbacks (like progress-report e.g.).</summary>
         public IntPtr user_data;
         /// <summary>Padding for later use.</summary>
@@ -209,107 +218,6 @@ namespace WebPWrapper.LowLevel
         /// <summary>Padding for later use.</summary>
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2, ArraySubType = UnmanagedType.U4)]
         private uint[] pad4;
-    };
-
-    /// <summary>Structure for storing auxiliary statistics (mostly for lossy encoding).</summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct WebPAuxStats
-    {
-        /// <summary>Final size</summary>
-        public int coded_size;
-        /// <summary>Peak-signal-to-noise ratio for Y</summary>
-        public float PSNRY;
-        /// <summary>Peak-signal-to-noise ratio for U</summary>
-        public float PSNRU;
-        /// <summary>Peak-signal-to-noise ratio for V</summary>
-        public float PSNRV;
-        /// <summary>Peak-signal-to-noise ratio for All</summary>
-        public float PSNRALL;
-        /// <summary>Peak-signal-to-noise ratio for Alpha</summary>
-        public float PSNRAlpha;
-        /// <summary>Number of intra4</summary>
-        public int block_count_intra4;
-        /// <summary>Number of intra16</summary>
-        public int block_count_intra16;
-        /// <summary>Number of skipped macroblocks</summary>
-        public int block_count_skipped;
-        /// <summary>Approximate number of bytes spent for header</summary>
-        public int header_bytes;
-        /// <summary>Approximate number of bytes spent for  mode-partition #0</summary>
-        public int mode_partition_0;
-        /// <summary>Approximate number of bytes spent for DC coefficients for segment 0.</summary>
-        public int residual_bytes_DC_segments0;
-        /// <summary>Approximate number of bytes spent for AC coefficients for segment 0.</summary>
-        public int residual_bytes_AC_segments0;
-        /// <summary>Approximate number of bytes spent for uv coefficients for segment 0.</summary>
-        public int residual_bytes_uv_segments0;
-        /// <summary>Approximate number of bytes spent for DC coefficients for segment 1.</summary>
-        public int residual_bytes_DC_segments1;
-        /// <summary>Approximate number of bytes spent for AC coefficients for segment 1.</summary>
-        public int residual_bytes_AC_segments1;
-        /// <summary>Approximate number of bytes spent for uv coefficients for segment 1.</summary>
-        public int residual_bytes_uv_segments1;
-        /// <summary>Approximate number of bytes spent for DC coefficients for segment 2.</summary>
-        public int residual_bytes_DC_segments2;
-        /// <summary>Approximate number of bytes spent for AC coefficients for segment 2.</summary>
-        public int residual_bytes_AC_segments2;
-        /// <summary>Approximate number of bytes spent for uv coefficients for segment 2.</summary>
-        public int residual_bytes_uv_segments2;
-        /// <summary>Approximate number of bytes spent for DC coefficients for segment 3.</summary>
-        public int residual_bytes_DC_segments3;
-        /// <summary>Approximate number of bytes spent for AC coefficients for segment 3.</summary>
-        public int residual_bytes_AC_segments3;
-        /// <summary>Approximate number of bytes spent for uv coefficients for segment 3.</summary>
-        public int residual_bytes_uv_segments3;
-        /// <summary>Number of macroblocks in segments 0</summary>
-        public int segment_size_segments0;
-        /// <summary>Number of macroblocks in segments 1</summary>
-        public int segment_size_segments1;
-        /// <summary>Number of macroblocks in segments 2</summary>
-        public int segment_size_segments2;
-        /// <summary>Number of macroblocks in segments 3</summary>
-        public int segment_size_segments3;
-        /// <summary>Quantizer values for segment 0</summary>
-        public int segment_quant_segments0;
-        /// <summary>Quantizer values for segment 1</summary>
-        public int segment_quant_segments1;
-        /// <summary>Quantizer values for segment 2</summary>
-        public int segment_quant_segments2;
-        /// <summary>Quantizer values for segment 3</summary>
-        public int segment_quant_segments3;
-        /// <summary>Filtering strength for segment 0 [0..63]</summary>
-        public int segment_level_segments0;
-        /// <summary>Filtering strength for segment 1 [0..63]</summary>
-        public int segment_level_segments1;
-        /// <summary>Filtering strength for segment 2 [0..63]</summary>
-        public int segment_level_segments2;
-        /// <summary>Filtering strength for segment 3 [0..63]</summary>
-        public int segment_level_segments3;
-        /// <summary>Size of the transparency data</summary>
-        public int alpha_data_size;
-        /// <summary>Size of the enhancement layer data</summary>
-        public int layer_data_size;
-
-        // lossless encoder statistics
-        /// <summary>bit0:predictor bit1:cross-color transform bit2:subtract-green bit3:color indexing</summary>
-        public Int32 lossless_features;
-        /// <summary>Number of precision bits of histogram</summary>
-        public int histogram_bits;
-        /// <summary>Precision bits for transform</summary>
-        public int transform_bits;
-        /// <summary>Number of bits for color cache lookup</summary>
-        public int cache_bits;
-        /// <summary>Number of color in palette, if used</summary>
-        public int palette_size;
-        /// <summary>Final lossless size</summary>
-        public int lossless_size;
-        /// <summary>Lossless header (transform, huffman etc) size</summary>
-        public int lossless_hdr_size;
-        /// <summary>Lossless image data size</summary>
-        public int lossless_data_size;
-        /// <summary>Padding for later use.</summary>
-        [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 2, ArraySubType = UnmanagedType.U4)]
-        private uint[] pad;
     };
 
     [StructLayout(LayoutKind.Sequential)]
@@ -452,15 +360,30 @@ namespace WebPWrapper.LowLevel
         public IntPtr memory;
 
         /// <summary>output RGB or YUV samples</summary>
+        /// <remarks>
+        /// The delegate/function must be alive (not collected by Garbage Collector) until it is no longer being used.
+        /// Keep a reference to it or use <seealso cref="GC.KeepAlive(object)"/> to keep the delegate/function alive.
+        /// </remarks>
+        [MarshalAs(UnmanagedType.FunctionPtr)]
         public NativeDelegates.OutputFunc emit;
         /// <summary>output alpha channel</summary>
+        /// <remarks>
+        /// The delegate/function must be alive (not collected by Garbage Collector) until it is no longer being used.
+        /// Keep a reference to it or use <seealso cref="GC.KeepAlive(object)"/> to keep the delegate/function alive.
+        /// </remarks>
+        [MarshalAs(UnmanagedType.FunctionPtr)]
         public NativeDelegates.OutputAlphaFunc emit_alpha;
         /// <summary>output one line of rescaled alpha values</summary>
+        /// <remarks>
+        /// The delegate/function must be alive (not collected by Garbage Collector) until it is no longer being used.
+        /// Keep a reference to it or use <seealso cref="GC.KeepAlive(object)"/> to keep the delegate/function alive.
+        /// </remarks>
+        [MarshalAs(UnmanagedType.FunctionPtr)]
         public NativeDelegates.OutputRowFunc emit_alpha_row;
     };
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct VP8Io
+    struct VP8Io
     {
         /// <summary>
         /// picture dimensions, in pixels (invariable).
@@ -497,6 +420,11 @@ namespace WebPWrapper.LowLevel
         /// or abort request. The actual size of the area to update is mb_w x mb_h
         /// in size, taking cropping into account.
         /// </summary>
+        /// <remarks>
+        /// The delegate/function must be alive (not collected by Garbage Collector) until it is no longer being used.
+        /// Keep a reference to it or use <seealso cref="GC.KeepAlive(object)"/> to keep the delegate/function alive.
+        /// </remarks>
+        [MarshalAs(UnmanagedType.FunctionPtr)]
         NativeDelegates.VP8IoPutHook put;
 
         /// <summary>
@@ -504,12 +432,23 @@ namespace WebPWrapper.LowLevel
         /// Must return false in case of setup error, true otherwise. If false is
         /// returned, teardown() will NOT be called. But if the setup succeeded
         /// and true is returned, then teardown() will always be called afterward.
+        /// </summary>
+        /// <remarks>
+        /// The delegate/function must be alive (not collected by Garbage Collector) until it is no longer being used.
+        /// Keep a reference to it or use <seealso cref="GC.KeepAlive(object)"/> to keep the delegate/function alive.
+        /// </remarks>
+        [MarshalAs(UnmanagedType.FunctionPtr)]
         NativeDelegates.VP8IoSetupHook setup;
 
         /// <summary>
         /// Called just after block decoding is finished (or when an error occurred
         /// during put()). Is NOT called if setup() failed.
         /// </summary>
+        /// <remarks>
+        /// The delegate/function must be alive (not collected by Garbage Collector) until it is no longer being used.
+        /// Keep a reference to it or use <seealso cref="GC.KeepAlive(object)"/> to keep the delegate/function alive.
+        /// </remarks>
+        [MarshalAs(UnmanagedType.FunctionPtr)]
         NativeDelegates.VP8IoTeardownHook teardown;
 
         /// <summary>
@@ -551,7 +490,7 @@ namespace WebPWrapper.LowLevel
     };
 
     [StructLayout(LayoutKind.Sequential)]
-    public unsafe ref struct WebPRescaler
+    unsafe ref struct WebPRescaler
     {
         /// <summary>true if we're expanding in the x direction</summary>
         int x_expand;
@@ -583,31 +522,6 @@ namespace WebPWrapper.LowLevel
         uint* irow, frow;
     };
 
-    [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct WebPIDecoder
-    {
-        /// <summary>current decoding state</summary>
-        internal DecState state_;
-        /// <summary>Params to store output info</summary>
-        internal WebPDecParams params_;
-        /// <summary>for down-casting 'dec_'</summary>
-        public int is_lossless_;
-        /// <summary>either a VP8Decoder or a VP8LDecoder instance</summary>
-        public IntPtr dec_;
-        public VP8Io io_;
-
-        /// <summary>input memory buffer</summary>
-        internal MemBuffer mem_;
-        /// <summary>output buffer (when no external one is supplied or if the external one has slow-memory)</summary>
-        public WebPDecBuffer output_;
-        /// <summary>Slow-memory output to copy to eventually</summary>
-        public WebPDecBuffer* final_output_;
-        /// <summary>Compressed VP8/VP8L size extracted from Header</summary>
-        public UIntPtr chunk_size_;
-        /// <summary>last row reached for intra-mode decoding</summary>
-        public int last_mb_y_;
-    };
-
     /// <summary>Output buffer</summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct WebPDecBuffer
@@ -632,5 +546,48 @@ namespace WebPWrapper.LowLevel
         private UInt32 pad4;
         /// <summary>Internally allocated memory (only when is_external_memory is 0). Should not be used externally, but accessed via WebPRGBABuffer.</summary>
         public IntPtr private_memory;
-    }
+    };
+
+    /// <summary>Output buffer (Read-only)</summary>
+    /// <remarks>It's actually a <seealso cref="WebPDecBuffer"/>, but with read-only state.</remarks>
+    [StructLayout(LayoutKind.Sequential)]
+    public readonly struct WebPDecodedDataBuffer
+    {
+        /// <summary>Colorspace.</summary>
+        public readonly WEBP_CSP_MODE colorspace;
+        /// <summary>Width of image.</summary>
+        public readonly int width;
+        /// <summary>Height of image.</summary>
+        public readonly int height;
+        /// <summary>If non-zero, 'internal_memory' pointer is not used. If value is '2' or more, the external memory is considered 'slow' and multiple read/write will be avoided.</summary>
+        public readonly int is_external_memory;
+        /// <summary>Output buffer parameters.</summary>
+        public readonly RGBA_YUVA_Buffer u;
+        /// <summary>padding for later use.</summary>
+        private readonly UInt32 pad1;
+        /// <summary>padding for later use.</summary>
+        private readonly UInt32 pad2;
+        /// <summary>padding for later use.</summary>
+        private readonly UInt32 pad3;
+        /// <summary>padding for later use.</summary>
+        private readonly UInt32 pad4;
+        /// <summary>Internally allocated memory (only when is_external_memory is 0). Should not be used externally, but accessed via WebPRGBABuffer.</summary>
+        public readonly IntPtr private_memory;
+    };
+
+    /// <summary>
+    /// A special WebPWriterFunction that writes to memory using the following WebPMemoryWriter object (to be set as a custom_ptr).
+    /// </summary>
+    public struct WebPMemoryWriter
+    {
+        /// <summary>final buffer's pointer (of size 'max_size', larger than 'size').</summary>
+        public IntPtr mem;
+        /// <summary>final buffer's data length</summary>
+        public UIntPtr size;      // final size
+        /// <summary>final buffer's capacity</summary>
+        public UIntPtr max_size;
+        /// <summary>padding for later use</summary>
+        [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 1, ArraySubType = UnmanagedType.U4)]
+        private uint[] pad;
+    };
 }

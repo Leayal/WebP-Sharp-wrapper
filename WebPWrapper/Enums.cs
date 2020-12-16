@@ -121,6 +121,7 @@ namespace WebPWrapper
         /// <summary>Discrete tone image (graph, map-tile etc).</summary>
         Graph,
         /// <summary>list terminator. always last.</summary>
+        /// <remarks>This value has no use or meaning</remarks>
         Last
     };
 }

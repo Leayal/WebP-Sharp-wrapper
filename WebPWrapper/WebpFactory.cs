@@ -88,8 +88,8 @@ namespace WebPWrapper
         /// will output the RGB/A samples specified by '<paramref name="colorspace"/>' into a preallocated internal buffer.
         /// </summary>
         /// <remarks>
-        /// Equivalent to <seealso cref="CreateDecoderForRGBX(in ILibwebp, WEBP_CSP_MODE, IntPtr, UIntPtr, in int)"/>, with 'output_buffer' is NULL.
-        /// Use <seealso cref="GetDecodedData(out int, out int, out int, out int, out IntPtr)"/> or <seealso cref="GetDecodedData(out int, out int, out int, out int, out ReadOnlySpan{byte})"/>
+        /// Equivalent to <seealso cref="CreateDecoderForRGBX(in WEBP_CSP_MODE, IntPtr, UIntPtr, in int)"/>, with 'output_buffer' is NULL.
+        /// Use <seealso cref="WebpImageDecoder.GetDecodedImage(out int, out int, out int, out int, out IntPtr)"/> or <seealso cref="WebpImageDecoder.GetDecodedImage(out int, out int, out int, out int, out ReadOnlySpan{byte})"/>
         /// to obtain the decoded data.
         /// </remarks>
         /// <exception cref="InvalidProgramException">Unknown error occured.</exception>
@@ -122,7 +122,7 @@ namespace WebPWrapper
         }
 
         /// <summary>Free any memory associated with the buffer. Must always be called last. Doesn't free the 'buffer' structure itself.</summary>
-        /// <param name="buffer">The <seealso cref="WebPDecBuffer"/> to free the associated memory.</param>
+        /// <param name="output_buffer">The <seealso cref="WebPDecBuffer"/> to free the associated memory.</param>
         /// <remarks>External memory will not be touched.</remarks>
         public void Free(ref WebPDecBuffer output_buffer)
         {

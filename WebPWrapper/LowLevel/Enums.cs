@@ -1,4 +1,6 @@
-﻿namespace WebPWrapper.LowLevel
+﻿using System;
+
+namespace WebPWrapper.LowLevel
 {
     /// <summary>Encoding error conditions.</summary>
     public enum WebPEncodingError
@@ -30,9 +32,11 @@
     };
 
     /// <summary>The returning value in webp picture writer to determine whether the writer should continue or abort.</summary>
-    public enum WEBP_BUFFER_WRITER_RESPONSE : int
+    public enum WEBP_WRITER_RESPONSE : int
     {
+        /// <summary>Abort the operation.</summary>
         ABORT = 0,
+        /// <summary>Continue the operation.</summary>
         CONTINUE
     };
 
@@ -52,6 +56,8 @@
         VP8_STATUS_USER_ABORT,
         VP8_STATUS_NOT_ENOUGH_DATA,
     };
+
+
 
     /// <summary>Describes the byte-ordering of packed samples in memory.</summary>
     public enum WEBP_CSP_MODE
@@ -96,7 +102,7 @@
     /// WEBP_HEADER->VP8L_HEADER->VP8L_DATA->DONE for a lossless image.
     /// If there is any error the decoder goes into state ERROR.
     /// </summary>
-    public enum DecState
+    enum DecState
     {
         /// <summary>All the data before that of the VP8/VP8L chunk.</summary>
         STATE_WEBP_HEADER,
@@ -117,4 +123,20 @@
         MEM_MODE_APPEND,
         MEM_MODE_MAP
     };
+
+    /// <summary>
+    /// Encoder's colorspace bitwise flags.
+    /// </summary>
+    [Flags]
+    public enum WebPEncCSP
+    {
+        /// <summary>chroma sampling 4:2:0</summary>
+        WEBP_YUV420 = 0,
+        /// <summary>chroma sampling 4:2:0 with alpha channel</summary>
+        WEBP_YUV420A = 4,
+        /// <summary>bit-mask to get the UV sampling factors</summary>
+        WEBP_CSP_UV_MASK = 3,
+        /// <summary>bit that is set if alpha is present</summary>
+        WEBP_CSP_ALPHA_BIT = 4
+    }
 }

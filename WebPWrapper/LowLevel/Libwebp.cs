@@ -64,6 +64,10 @@ namespace WebPWrapper.LowLevel
             Interlocked.Exchange(ref this.partners, 0);
         }
 
+        /// <summary>Load the libwebp native library file from the given path.</summary>
+        /// <param name="library_path">The path to the libwebp native library.</param>
+        /// <returns>Returns an <seealso cref="ILibwebp"/> interface which can be used.</returns>
+        /// <remarks>Use <seealso cref="Deinit(ILibwebp)"/> once you've finished using to unload the library.</remarks>
         public static ILibwebp Init(string library_path)
         {
             if (string.IsNullOrWhiteSpace(library_path))
@@ -74,7 +78,7 @@ namespace WebPWrapper.LowLevel
             {
                 // Let's leave the full-load library for another time.
                 // Make use of LoadLibrary to search for the library
-                var loadedLib = new Libwebp(library_path, true);
+                var loadedLib = new Libwebp(library_path, false);
 
                 // Check if the library is already existed in cache
                 var addedOrNot = cache_library.GetOrAdd(loadedLib.LibraryPath, loadedLib);
@@ -98,6 +102,9 @@ namespace WebPWrapper.LowLevel
             return result;
         }
 
+        /// <summary>Attempt to decrease the reference count of the underlying native library of the <seealso cref="ILibwebp"/> interface.</summary>
+        /// <param name="library">The <seealso cref="ILibwebp"/> interface to attempt</param>
+        /// <remarks>Only the default implementation has this. The underlying native library will also be unloaded if the reference count reaches 0.</remarks>
         public static void Deinit(ILibwebp library)
         {
             if (library == null)
@@ -216,7 +223,7 @@ namespace WebPWrapper.LowLevel
                     // WebPConfigInitInternal
                     this.AssertFunctionLoadFailure<NativeDelegates.WebPConfigInitInternal>("WebPConfigInitInternal");
 
-                    // WebPConfigInitInternal
+                    // WebPGetFeaturesInternal
                     this.AssertFunctionLoadFailure<NativeDelegates.WebPGetFeaturesInternal>("WebPGetFeaturesInternal");
 
                     // WebPConfigLosslessPreset
@@ -316,7 +323,12 @@ namespace WebPWrapper.LowLevel
         /// <param name="config">The WebPConfig struct</param>
         /// <param name="preset">Type of image</param>
         /// <param name="quality">Quality of compresion</param>
-        /// <returns>0 if error</returns>
+        /// <returns>Non-zero if success, otherwise zero if error</returns>
+        /// <remarks>
+        /// Should always be called, to initialize a fresh WebPConfig structure before modification.
+        /// <see cref="WebPConfigInit"/>() must have succeeded before using the 'config' object.
+        /// Note that the default values are '<paramref name="preset"/>'=<seealso cref="WebPPreset.Default"/> and '<paramref name="quality"/>'=75.
+        /// </remarks>
         public int WebPConfigInit(ref WebPConfig config, WebPPreset preset, float quality)
         {
             if (this.TryGetFunction< NativeDelegates.WebPConfigInitInternal >("WebPConfigInitInternal", out var @delegate))
@@ -330,7 +342,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="rawWebP">Bytes[] of webp image</param>
         /// <param name="data_size">Size of rawWebP</param>
         /// <param name="features">Features of WebP image</param>
-        /// <returns>VP8StatusCode</returns>
+        /// <returns>Returns <seealso cref="VP8StatusCode.VP8_STATUS_OK"/> if success. Otherwise the error code.</returns>
         public VP8StatusCode WebPGetFeatures(IntPtr rawWebP, uint data_size, ref WebPBitstreamFeatures features)
         {
             if (this.TryGetFunction<NativeDelegates.WebPGetFeaturesInternal>("WebPGetFeaturesInternal", out var @delegate))
@@ -361,7 +373,7 @@ namespace WebPWrapper.LowLevel
         }
 
         /// <summary>Check that 'config' is non-NULL and all configuration parameters are within their valid ranges.</summary>
-        /// <param name="config">The WebPConfig struct</param>
+        /// <param name="config">The <seealso cref="WebPConfig"/> struct to check</param>
         /// <returns>1 if config are OK</returns>
         public int WebPValidateConfig(ref WebPConfig config)
         {
@@ -430,7 +442,7 @@ namespace WebPWrapper.LowLevel
 
         /// <summary>Colorspace conversion function to import RGBA samples.</summary>
         /// <param name="wpic">The WebPPicture struct</param>
-        /// <param name="bgr">Point to RGBA data</param>
+        /// <param name="rgba">Point to RGBA data</param>
         /// <param name="stride">stride of RGBA data</param>
         /// <returns>Returns 0 in case of memory error.</returns>
         public int WebPPictureImportRGBA(ref WebPPicture wpic, IntPtr rgba, int stride)
@@ -635,7 +647,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="height">The range is limited currently from 1 to 16383</param>
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="quality_factor">Ranges from 0 (lower quality) to 100 (highest quality). Controls the loss and quality during compression</param>
-        /// <param name="output">output_buffer with WebP image</param>
+        /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         public int WebPEncodeBGR(IntPtr bgr, int width, int height, int stride, float quality_factor, out IntPtr outputData)
         {
@@ -652,7 +664,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="height">The range is limited currently from 1 to 16383</param>
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="quality_factor">Ranges from 0 (lower quality) to 100 (highest quality). Controls the loss and quality during compression</param>
-        /// <param name="output">output_buffer with WebP image</param>
+        /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
         public int WebPEncodeRGB(IntPtr rgb, int width, int height, int stride, float quality_factor, out IntPtr outputData)
@@ -670,7 +682,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="height">The range is limited currently from 1 to 16383</param>
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="quality_factor">Ranges from 0 (lower quality) to 100 (highest quality). Controls the loss and quality during compression</param>
-        /// <param name="output">output_buffer with WebP image</param>
+        /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
         public int WebPEncodeBGRA(IntPtr bgra, int width, int height, int stride, float quality_factor, out IntPtr outputData)
@@ -688,7 +700,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="height">The range is limited currently from 1 to 16383</param>
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="quality_factor">Ranges from 0 (lower quality) to 100 (highest quality). Controls the loss and quality during compression</param>
-        /// <param name="output">output_buffer with WebP image</param>
+        /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
         public int WebPEncodeRGBA(IntPtr rgba, int width, int height, int stride, float quality_factor, out IntPtr outputData)
@@ -705,7 +717,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="width">The range is limited currently from 1 to 16383</param>
         /// <param name="height">The range is limited currently from 1 to 16383</param>
         /// <param name="stride">Specifies the distance between scanlines</param>
-        /// <param name="output">output_buffer with WebP image</param>
+        /// <param name="outputData">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         public int WebPEncodeLosslessBGR(IntPtr bgr, int width, int height, int stride, out IntPtr outputData)
         {
@@ -721,7 +733,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="width">The range is limited currently from 1 to 16383</param>
         /// <param name="height">The range is limited currently from 1 to 16383</param>
         /// <param name="stride">Specifies the distance between scanlines</param>
-        /// <param name="output">output_buffer with WebP image</param>
+        /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         public int WebPEncodeLosslessBGRA(IntPtr bgra, int width, int height, int stride, out IntPtr outputData)
         {
@@ -737,7 +749,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="width">The range is limited currently from 1 to 16383</param>
         /// <param name="height">The range is limited currently from 1 to 16383</param>
         /// <param name="stride">Specifies the distance between scanlines</param>
-        /// <param name="output">output_buffer with WebP image</param>
+        /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         public int WebPEncodeLosslessRGB(IntPtr rgb, int width, int height, int stride, out IntPtr outputData)
         {
@@ -753,7 +765,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="width">The range is limited currently from 1 to 16383</param>
         /// <param name="height">The range is limited currently from 1 to 16383</param>
         /// <param name="stride">Specifies the distance between scanlines</param>
-        /// <param name="output">output_buffer with WebP image</param>
+        /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
         public int WebPEncodeLosslessRGBA(IntPtr rgba, int width, int height, int stride, out IntPtr outputData)
@@ -766,7 +778,7 @@ namespace WebPWrapper.LowLevel
         }
 
         /// <summary>Releases memory returned by the WebPEncode</summary>
-        /// <param name="p">Pointer to memory</param>
+        /// <param name="pointer">Pointer to memory</param>
         public void WebPFree(IntPtr pointer)
         {
             if (this.TryGetFunction<NativeDelegates.WebPFree>("WebPFree", out var @delegate))
@@ -935,7 +947,7 @@ namespace WebPWrapper.LowLevel
         }
 
         /// <summary>
-        /// A variant of the <see cref="WebPIAppend(WebPIDecoder, IntPtr, UIntPtr)"/> to be used when data buffer contains
+        /// A variant of the <see cref="WebPIAppend(IntPtr, IntPtr, UIntPtr)"/> to be used when data buffer contains
         /// partial data from the beginning. In this case data buffer is not copied
         /// to the internal memory
         /// </summary>
@@ -960,7 +972,7 @@ namespace WebPWrapper.LowLevel
         }
 
         /// <summary>
-        /// Returns the RGB/A image decoded so far. The RGB/A output type corresponds to the colorspace specified during call to <see cref="WebPINewDecoder"/> or <see cref="WebPINewRGB"/>.
+        /// Returns the RGB/A image decoded so far. The RGB/A output type corresponds to the colorspace specified during call to <see cref="WebPINewDecoder()"/> or <see cref="WebPINewRGB"/>.
         /// </summary>
         /// <param name="idec"></param>
         /// <param name="last_y">The index of last decoded row in raster scan order</param>
@@ -987,7 +999,7 @@ namespace WebPWrapper.LowLevel
         }
 
         /// <summary>
-        /// Returns the YUVA image decoded so far. The YUVA output type corresponds to the colorspace specified during call to <see cref="WebPINewDecoder"/> or <see cref="WebPINewRGB"/>.
+        /// Returns the YUVA image decoded so far. The YUVA output type corresponds to the colorspace specified during call to <see cref="WebPINewDecoder()"/> or <see cref="WebPINewRGB"/>.
         /// </summary>
         /// <param name="idec"></param>
         /// <param name="last_y"></param>
@@ -1026,13 +1038,37 @@ namespace WebPWrapper.LowLevel
         /// Otherwise returns the pointer to the internal representation. This structure
         /// is read-only, tied to <seealso cref="WebPIDecoder"/>'s lifespan and should not be modified.
         /// </returns>
-        public WebPDecBuffer WebPIDecodedArea(IntPtr idec, ref int left, ref int top, ref int width, ref int height)
+        public IntPtr WebPIDecodedArea(IntPtr idec, ref int left, ref int top, ref int width, ref int height)
         {
             if (this.TryGetFunction<NativeDelegates.WebPIDecodedArea>("WebPIDecodedArea", out var @delegate))
             {
                 return @delegate.Invoke(idec, ref left, ref top, ref width, ref height);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPIDecodedArea' function from the library. Wrong library or wrong version?");
+        }
+
+        /// <summary>The following must be called first before any use.</summary>
+        /// <param name="writer">The <see cref="WebPMemoryWriter" /> structure to initialize</param>
+        public void WebPMemoryWriterInit(ref WebPMemoryWriter writer)
+        {
+            if (this.TryGetFunction<NativeDelegates.WebPMemoryWriterInit>("WebPMemoryWriterInit", out var @delegate))
+            {
+                @delegate.Invoke(ref writer);
+                return;
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPMemoryWriterInit' function from the library. Wrong library or wrong version?");
+        }
+
+        /// <summary>The following must be called to deallocate associated memory. The 'writer' object itself is not deallocated.</summary>
+        /// <param name="writer">The <see cref="WebPMemoryWriter" /> structure to free the associated allocated memory.</param>
+        public void WebPMemoryWriterClear(ref WebPMemoryWriter writer)
+        {
+            if (this.TryGetFunction<NativeDelegates.WebPMemoryWriterClear>("WebPMemoryWriterClear", out var @delegate))
+            {
+                @delegate.Invoke(ref writer);
+                return;
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPMemoryWriterClear' function from the library. Wrong library or wrong version?");
         }
 
         /// <summary>
@@ -1113,6 +1149,10 @@ namespace WebPWrapper.LowLevel
                 catch
                 {
                     function = default;
+                    if (System.Diagnostics.Debugger.IsAttached)
+                    {
+                        throw;
+                    }
                     return false;
                 }
                 
@@ -1151,7 +1191,7 @@ namespace WebPWrapper.LowLevel
                 {
                     this.libraryHandle.Close();
                     this.libraryHandle.Dispose();
-                    throw new FileLoadException($"Function '{(typeof(TDelegate)).ToString()}' not found in the library. Wrong library or wrong version?");
+                    throw new FileLoadException($"Function '{(typeof(TDelegate))}' not found in the library. Wrong library or wrong version?");
                 }
             }
         }
@@ -1167,6 +1207,7 @@ namespace WebPWrapper.LowLevel
         /// <summary>
         /// Dynamically lookup a function in the dll via kernel32!GetProcAddress.
         /// </summary>
+        /// <param name="handle">The library's handle</param>
         /// <param name="functionName">raw name of the function in the export table.</param>
         /// <returns>null if function is not found. Else a delegate to the unmanaged function.
         /// </returns>
@@ -1223,6 +1264,7 @@ namespace WebPWrapper.LowLevel
             this.libraryHandle = null;
         }
 
+        /// <summary>Destructor. Used by GC</summary>
         ~Libwebp()
         {
             this.Dispose(false);

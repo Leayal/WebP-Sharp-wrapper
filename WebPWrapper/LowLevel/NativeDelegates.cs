@@ -64,16 +64,14 @@ namespace WebPWrapper.LowLevel
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate int WebPPictureDistortion(ref WebPPicture srcPicture, ref WebPPicture refPicture, int metric_type, IntPtr pResult);
 
-        /// <summary>The writer type for output compress data</summary>
-        /// <param name="data">Data returned</param>
-        /// <param name="data_size">Size of data returned</param>
-        /// <param name="wpic">Picture struct</param>
-        /// <returns></returns>
+        // The following must be called first before any use.
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int WebPDataWriterCallback(IntPtr data, UIntPtr data_size, ref WebPPicture wpic);
+        internal delegate void WebPMemoryWriterInit(ref WebPMemoryWriter writer);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void WebPMemoryWriterClear(ref WebPMemoryWriter writer);
 
-        #region "Progressive decode"
+        #region "| Progressive decode |"
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate IntPtr WebPINewDecoder(ref WebPDecBuffer wpic);
 
@@ -102,7 +100,7 @@ namespace WebPWrapper.LowLevel
         internal delegate IntPtr WebPIDecGetYUVA(IntPtr idec, ref int last_y, ref IntPtr u, ref IntPtr v, ref IntPtr a, ref int width, ref int height, ref int stride, ref int uv_stride, ref int a_stride);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate WebPDecBuffer WebPIDecodedArea(IntPtr idec, ref int left, ref int top, ref int width, ref int height);
+        internal delegate ref IntPtr WebPIDecodedArea(IntPtr idec, ref int left, ref int top, ref int width, ref int height);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate int OutputFunc(ref VP8Io io, ref WebPDecParams p);

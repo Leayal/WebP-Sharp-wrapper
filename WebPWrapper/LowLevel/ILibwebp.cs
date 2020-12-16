@@ -37,21 +37,26 @@ namespace WebPWrapper.LowLevel
         /// <param name="config">The WebPConfig struct</param>
         /// <param name="preset">Type of image</param>
         /// <param name="quality">Quality of compresion</param>
-        /// <returns>0 if error</returns>
+        /// <returns>Non-zero if success, otherwise zero if error</returns>
+        /// <remarks>
+        /// Should always be called, to initialize a fresh WebPConfig structure before modification.
+        /// <see cref="WebPConfigInit"/>() must have succeeded before using the 'config' object.
+        /// Note that the default values are '<paramref name="preset"/>'=<seealso cref="WebPPreset.Default"/> and '<paramref name="quality"/>'=75.
+        /// </remarks>
         int WebPConfigInit(ref WebPConfig config, WebPPreset preset, float quality);
 
         /// <summary>Get info of WepP image</summary>
         /// <param name="rawWebP">Bytes[] of webp image</param>
         /// <param name="data_size">Size of rawWebP</param>
         /// <param name="features">Features of WebP image</param>
-        /// <returns>VP8StatusCode</returns>
+        /// <returns>Returns <seealso cref="VP8StatusCode.VP8_STATUS_OK"/> if success. Otherwise the error code.</returns>
         VP8StatusCode WebPGetFeatures(IntPtr rawWebP, uint data_size, ref WebPBitstreamFeatures features);
 
         /// <summary>Get info of WepP image</summary>
         /// <param name="rawWebP">Bytes[] of webp image</param>
         /// <param name="data_size">Size of rawWebP</param>
         /// <param name="features">Features of WebP image</param>
-        /// <returns>VP8StatusCode</returns>
+        /// <returns>Returns <seealso cref="VP8StatusCode.VP8_STATUS_OK"/> if success. Otherwise the error code.</returns>
         VP8StatusCode WebPGetFeatures(IntPtr rawWebP, int data_size, ref WebPBitstreamFeatures features);
 
         /// <summary>Activate the lossless compression mode with the desired efficiency.</summary>
@@ -61,7 +66,7 @@ namespace WebPWrapper.LowLevel
         int WebPConfigLosslessPreset(ref WebPConfig config, int level);
 
         /// <summary>Check that 'config' is non-NULL and all configuration parameters are within their valid ranges.</summary>
-        /// <param name="config">The WebPConfig struct</param>
+        /// <param name="config">The <seealso cref="WebPConfig"/> struct to check</param>
         /// <returns>1 if config are OK</returns>
         int WebPValidateConfig(ref WebPConfig config);
 
@@ -95,7 +100,7 @@ namespace WebPWrapper.LowLevel
 
         /// <summary>Colorspace conversion function to import RGBA samples.</summary>
         /// <param name="wpic">The WebPPicture struct</param>
-        /// <param name="bgr">Point to RGBA data</param>
+        /// <param name="rgba">Point to RGBA data</param>
         /// <param name="stride">stride of RGBA data</param>
         /// <returns>Returns 0 in case of memory error.</returns>
         int WebPPictureImportRGBA(ref WebPPicture wpic, IntPtr rgba, int stride);
@@ -352,7 +357,7 @@ namespace WebPWrapper.LowLevel
         VP8StatusCode WebPIAppend(IntPtr idec, IntPtr data, UIntPtr data_size);
 
         /// <summary>
-        /// A variant of the <see cref="WebPIAppend(ref WebPIDecoder, IntPtr, UIntPtr)"/> to be used when data buffer contains
+        /// A variant of the <see cref="WebPIAppend(IntPtr, IntPtr, UIntPtr)"/> to be used when data buffer contains
         /// partial data from the beginning. In this case data buffer is not copied
         /// to the internal memory
         /// </summary>
@@ -370,7 +375,7 @@ namespace WebPWrapper.LowLevel
         VP8StatusCode WebPIUpdate(IntPtr idec, IntPtr data, UIntPtr data_size);
 
         /// <summary>
-        /// Returns the RGB/A image decoded so far. The RGB/A output type corresponds to the colorspace specified during call to <see cref="WebPINewDecoder"/> or <see cref="WebPINewRGB"/>.
+        /// Returns the RGB/A image decoded so far. The RGB/A output type corresponds to the colorspace specified during call to <see cref="WebPINewDecoder()"/> or <see cref="WebPINewRGB"/>.
         /// </summary>
         /// <param name="idec"></param>
         /// <param name="last_y">The index of last decoded row in raster scan order</param>
@@ -385,7 +390,7 @@ namespace WebPWrapper.LowLevel
         IntPtr WebPIDecGetRGB(IntPtr idec, ref int last_y, ref int width, ref int height, ref int stride);
 
         /// <summary>
-        /// Returns the YUVA image decoded so far. The YUVA output type corresponds to the colorspace specified during call to <see cref="WebPINewDecoder"/> or <see cref="WebPINewRGB"/>.
+        /// Returns the YUVA image decoded so far. The YUVA output type corresponds to the colorspace specified during call to <see cref="WebPINewDecoder()"/> or <see cref="WebPINewRGB"/>.
         /// </summary>
         /// <param name="idec"></param>
         /// <param name="last_y"></param>

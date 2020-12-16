@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using WebPWrapper.LowLevel;
 
 namespace WebPWrapper
@@ -116,6 +117,7 @@ namespace WebPWrapper
         /// <summary>
         /// Creates a new incremental decoder with the supplied buffer parameter
         /// </summary>
+        /// <param name="library">The libwebp interface obtained from <seealso cref="Libwebp.Init(string)"/></param>
         /// <param name="output_buffer">The data of <see cref="WebPDecBuffer"/> to create decoder</param>
         /// <remarks>
         /// The supplied 'output_buffer' content MUST NOT be changed between calls to
@@ -144,6 +146,8 @@ namespace WebPWrapper
         /// </returns>
         public VP8StatusCode AppendEncodedData(in ReadOnlySpan<byte> data)
         {
+            this.ThrowIfDisposed();
+
             var result = VP8StatusCode.VP8_STATUS_INVALID_PARAM;
             unsafe
             {
@@ -165,6 +169,8 @@ namespace WebPWrapper
         /// </returns>
         public VP8StatusCode AppendEncodedData(in ReadOnlyMemory<byte> data)
         {
+            this.ThrowIfDisposed();
+
             var result = VP8StatusCode.VP8_STATUS_INVALID_PARAM;
             using (var pinned = data.Pin())
             {
@@ -178,9 +184,7 @@ namespace WebPWrapper
             return result;
         }
 
-        /// <summary>
-        /// Returns the RGB/A image decoded so far.
-        /// </summary>
+        /// <summary>Gets the RGB/A of the whole decoded image.</summary>
         /// <param name="last_y">The index of last decoded row in raster scan order</param>
         /// <param name="width">The width of the decoded image</param>
         /// <param name="height">The height of the decoded image</param>
@@ -192,6 +196,8 @@ namespace WebPWrapper
         /// </returns>
         public VP8StatusCode GetDecodedImage(out int last_y, out int width, out int height, out int stride, out ReadOnlySpan<byte> buffer)
         {
+            this.ThrowIfDisposed();
+
             int _last_y = 0, _width = 0, _height = 0, _stride = 0;
             var ptr = this.iwebp.WebPIDecGetRGB(this.decoder, ref _last_y, ref _width, ref _height, ref _stride);
             if (ptr == IntPtr.Zero)
@@ -217,17 +223,20 @@ namespace WebPWrapper
             }
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="last_y"></param>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        /// <param name="stride"></param>
-        /// <param name="backBufferPointer"></param>
-        /// <returns></returns>
+        /// <summary>Gets the RGB/A of the whole decoded image.</summary>
+        /// <param name="last_y">The index of last decoded row in raster scan order</param>
+        /// <param name="width">The width of the decoded image</param>
+        /// <param name="height">The height of the decoded image</param>
+        /// <param name="stride">The stride of the decoded image</param>
+        /// <param name="backBufferPointer">The pointer to the backbuffer's memory.</param>
+        /// <returns>
+        /// Returns <seealso cref="VP8StatusCode.VP8_STATUS_OK"/> if successful.
+        /// Otherwise <seealso cref="VP8StatusCode.VP8_STATUS_NOT_ENOUGH_DATA"/> in case the decode doesn't have enough data to decode.
+        /// </returns>
         public VP8StatusCode GetDecodedImage(out int last_y, out int width, out int height, out int stride, out IntPtr backBufferPointer)
         {
+            this.ThrowIfDisposed();
+
             int _last_y = 0, _width = 0, _height = 0, _stride = 0;
             var ptr = this.iwebp.WebPIDecGetRGB(this.decoder, ref _last_y, ref _width, ref _height, ref _stride);
             if (ptr == IntPtr.Zero)
@@ -246,8 +255,52 @@ namespace WebPWrapper
                 height = _height;
                 stride = _stride;
                 backBufferPointer = ptr;
-                WebPIDecoder a;
                 return VP8StatusCode.VP8_STATUS_OK;
+            }
+        }
+
+        /// <summary>Gets the displayable data decoded so far.</summary>
+        /// <param name="left">The rectangle's left the displayable area.</param>
+        /// <param name="top">The rectangle's top the displayable area.</param>
+        /// <param name="width">The rectangle's width the displayable area.</param>
+        /// <param name="height">The rectangle's height the displayable area.</param>
+        /// <param name="decodedData">The structure contains the displayable data.</param>
+        /// <returns>
+        /// Returns <seealso cref="VP8StatusCode.VP8_STATUS_OK"/> if successful.
+        /// Otherwise <seealso cref="VP8StatusCode.VP8_STATUS_NOT_ENOUGH_DATA"/> in case the decode doesn't have enough data to decode or the decoder is in invalid state for this operation.
+        /// </returns>
+        public VP8StatusCode GetDecodedImage(out int left, out int top, out int width, out int height, out WebPDecodedDataBuffer decodedData)
+        {
+            this.ThrowIfDisposed();
+
+            int _left = 0, _width = 0, _height = 0, _top = 0;
+            var ptr = this.webp.WebPIDecodedArea(this.decoder, ref _left, ref _top, ref _width, ref _height);
+            if (ptr == IntPtr.Zero)
+            {
+                left = 0;
+                width = 0;
+                height = 0;
+                top = 0;
+                decodedData = default;
+                return VP8StatusCode.VP8_STATUS_NOT_ENOUGH_DATA;
+            }
+            else
+            {
+                left = _left;
+                width = _width;
+                height = _height;
+                top = _top;
+                // decodedData = (WebPDecBuffer)Marshal.PtrToStructure(ptr, typeof(WebPDecBuffer));
+                decodedData = Marshal.PtrToStructure<WebPDecodedDataBuffer>(ptr);
+                return VP8StatusCode.VP8_STATUS_OK;
+            }
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (this.disposed)
+            {
+                throw new ObjectDisposedException(this.GetType().Name);
             }
         }
 
@@ -259,6 +312,7 @@ namespace WebPWrapper
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>Destructor. Used by GC</summary>
         ~WebpImageDecoder()
         {
             this.Dispose(false);
