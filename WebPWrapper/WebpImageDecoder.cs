@@ -5,14 +5,14 @@ using WebPWrapper.LowLevel;
 namespace WebPWrapper
 {
     /// <summary>The image decoder that is used to progressively decode a Webp image.</summary>
-    public unsafe sealed class WebpImageDecoder : IDisposable
+    public sealed class WebpImageDecoder : IDisposable
     {
         /// <summary>
         /// This function allocates and initializes an incremental-decoder object, which
         /// will output the RGB/A samples specified by '<paramref name="colorspace"/>' into a preallocated internal buffer.
         /// </summary>
         /// <remarks>
-        /// Equivalent to <seealso cref="CreateDecoderForRGBX(in ILibwebp, WEBP_CSP_MODE, IntPtr, UIntPtr, in int)"/>, with 'output_buffer' is NULL.
+        /// Equivalent to <seealso cref="CreateDecoderForRGBX(in ILibwebp, in WEBP_CSP_MODE, in IntPtr, in UIntPtr, in int)"/>, with 'output_buffer' is NULL.
         /// Use <seealso cref="GetDecodedImage(out int, out int, out int, out int, out IntPtr)"/> or <seealso cref="GetDecodedImage(out int, out int, out int, out int, out ReadOnlySpan{byte})"/>
         /// to obtain the decoded data.
         /// </remarks>
@@ -20,8 +20,8 @@ namespace WebPWrapper
         /// <exception cref="NotSupportedException"><paramref name="colorspace"/> is not RGB(A) colorspace</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="colorspace"/> is not a valid value</exception>
         /// <returns><see cref="WebpImageDecoder"/></returns>
-        public static WebpImageDecoder CreateDecoderForRGBX(in ILibwebp library, WEBP_CSP_MODE colorspace)
-            => CreateDecoderForRGBX(library, colorspace, IntPtr.Zero, UIntPtr.Zero, 0);
+        public static WebpImageDecoder CreateDecoderForRGBX(in ILibwebp library, in WEBP_CSP_MODE colorspace)
+            => CreateDecoderForRGBX(in library, in colorspace, IntPtr.Zero, UIntPtr.Zero, 0);
 
         /// <summary>
         /// This function allocates and initializes an incremental-decoder object, which
@@ -40,7 +40,7 @@ namespace WebPWrapper
         /// <exception cref="NotSupportedException"><paramref name="colorspace"/> is not RGB(A) colorspace</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="colorspace"/> is not a valid value</exception>
         /// <returns><see cref="WebpImageDecoder"/></returns>
-        public static WebpImageDecoder CreateDecoderForRGBX(in ILibwebp library, WEBP_CSP_MODE colorspace, IntPtr output_buffer, UIntPtr output_buffer_size, in int output_stride)
+        public static WebpImageDecoder CreateDecoderForRGBX(in ILibwebp library, in WEBP_CSP_MODE colorspace, in IntPtr output_buffer, in UIntPtr output_buffer_size, in int output_stride)
         {
             WebpImageDecoder result;
             if (colorspace >= WEBP_CSP_MODE.MODE_LAST)
@@ -60,7 +60,7 @@ namespace WebPWrapper
                 }
                 else
                 {
-                    result = new WebpImageDecoder(library, false);
+                    result = new WebpImageDecoder(in library, false);
                     result.decoder = ptr;
                 }
             }
@@ -75,10 +75,8 @@ namespace WebPWrapper
         private Libwebp webp;
         private ILibwebp iwebp;
         private bool disposed;
-        private bool hasHeader;
-        private WebPBitstreamFeatures imageHeader;
 
-        private WebpImageDecoder(ILibwebp library, bool dummy)
+        private WebpImageDecoder(in ILibwebp library, in bool dummy)
         {
             if (library == null)
             {
@@ -89,8 +87,6 @@ namespace WebPWrapper
             {
                 throw new BadImageFormatException("The library does not support decoding.");
             }
-            this.hasHeader = false;
-            this.imageHeader = new WebPBitstreamFeatures();
             this.iwebp = library;
             if (library is Libwebp lib)
             {
@@ -103,8 +99,8 @@ namespace WebPWrapper
             }
         }
 
-        /// <summary>Creates a new incremental decoder with default settings (Output with MODE_RGB)</summary>
-        public WebpImageDecoder(in ILibwebp library) : this(library, false)
+        /// <summary>Creates a new incremental decoder with default options (Output with MODE_RGB)</summary>
+        public WebpImageDecoder(in ILibwebp library) : this(in library, false)
         {
             var ptr = library.WebPINewDecoder();
             if (ptr == IntPtr.Zero)
@@ -113,6 +109,52 @@ namespace WebPWrapper
             }
             this.decoder = ptr;
         }
+
+        /// <summary>Creates a new incremental decoder with the given options and input buffer</summary>
+        /// <param name="library">The webp interface of the native library</param>
+        /// <param name="input_buffer">The input buffer of the webp image data. Can be NULL</param>
+        /// <param name="input_buffer_size">The size of the input buffer.</param>
+        /// <param name="options">The decoder options.</param>
+        /// <remarks>In case '<paramref name="input_buffer"/>' is NULL, '<paramref name="input_buffer_size"/>' is ignored</remarks>
+        public WebpImageDecoder(in ILibwebp library, in IntPtr input_buffer, in UIntPtr input_buffer_size, ref WebPDecoderConfig options) : this(in library, false)
+        {
+            var ptr = library.WebPIDecode(in input_buffer, in input_buffer_size, ref options);
+            if (ptr == IntPtr.Zero)
+            {
+                throw new ArgumentException();
+            }
+            this.decoder = ptr;
+        }
+
+        /// <summary>Creates a new incremental decoder with the given options and input buffer</summary>
+        /// <param name="library">The webp interface of the native library</param>
+        /// <param name="options">The decoder options.</param>
+        /// <remarks>This constructor is the shortcut for <seealso cref="WebpImageDecoder(in ILibwebp, in IntPtr, in UIntPtr, ref WebPDecoderConfig)"/> with 'input_buffer' is NULL</remarks>
+        public WebpImageDecoder(in ILibwebp library, ref WebPDecoderConfig options) : this(in library, IntPtr.Zero, UIntPtr.Zero, ref options) { }
+
+        /// <summary>Creates a new incremental decoder with the given options and input buffer</summary>
+        /// <param name="library">The webp interface of the native library</param>
+        /// <param name="input_buffer">The input buffer of the webp image data. Can be NULL</param>
+        /// <param name="input_buffer_size">The size of the input buffer.</param>
+        /// <param name="options">The decoder options.</param>
+        /// <remarks>This is an alternative to <seealso cref="WebpImageDecoder(in ILibwebp, in IntPtr, in UIntPtr, ref WebPDecoderConfig)"/>. In case '<paramref name="input_buffer"/>' is NULL, '<paramref name="input_buffer_size"/>' is ignored</remarks>
+        public WebpImageDecoder(in ILibwebp library, in IntPtr input_buffer, in UIntPtr input_buffer_size, in DecoderOptions options) : this(in library, false)
+        {
+            var config = new WebPDecoderConfig();
+            options.ApplyOptions(ref config);
+            var ptr = library.WebPIDecode(in input_buffer, in input_buffer_size, ref config);
+            if (ptr == IntPtr.Zero)
+            {
+                throw new ArgumentException();
+            }
+            this.decoder = ptr;
+        }
+
+        /// <summary>Creates a new incremental decoder with the given options and input buffer</summary>
+        /// <param name="library">The webp interface of the native library</param>
+        /// <param name="options">The decoder options.</param>
+        /// <remarks>This constructor is the shortcut for <seealso cref="WebpImageDecoder(in ILibwebp, in IntPtr, in UIntPtr, in DecoderOptions)"/> with 'input_buffer' is NULL</remarks>
+        public WebpImageDecoder(in ILibwebp library, in DecoderOptions options) : this(in library, IntPtr.Zero, UIntPtr.Zero, in options) { }
 
         /// <summary>
         /// Creates a new incremental decoder with the supplied buffer parameter
@@ -127,7 +169,7 @@ namespace WebPWrapper
         /// within valid bounds.
         /// All other fields of WebPDecBuffer MUST remain constant between calls.
         /// </remarks>
-        public WebpImageDecoder(in ILibwebp library, ref WebPDecBuffer output_buffer) : this(library, false)
+        public WebpImageDecoder(in ILibwebp library, ref WebPDecBuffer output_buffer) : this(in library, false)
         {
             var ptr = library.WebPINewDecoder(ref output_buffer);
             if (ptr == IntPtr.Zero)

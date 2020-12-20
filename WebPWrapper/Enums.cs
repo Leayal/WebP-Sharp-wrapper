@@ -44,7 +44,7 @@ namespace WebPWrapper
     public enum CompressionLevel
     {
         /// <summary>Fastest compression speed but lowest quality</summary>
-        Level0,
+        Level0 = 0,
         Level1,
         Level2,
         Level3,

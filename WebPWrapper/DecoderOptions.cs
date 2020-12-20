@@ -4,12 +4,10 @@ using WebPWrapper.LowLevel;
 
 namespace WebPWrapper
 {
-    /// <summary>
-    /// WebP Decoding options
-    /// </summary>
+    /// <summary>WebP Decoding options</summary>
+    /// <remarks>Just a convenient class. You still need to call <seealso cref="ApplyOptions(ref WebPDecoderConfig)"/> and use the <seealso cref="WebPDecoderConfig"/> structure.</remarks>
     public sealed class DecoderOptions
     {
-        internal static readonly DecoderOptions Default = new DecoderOptions();
         /// <summary>
         /// Initialize a new option instance
         /// </summary>
@@ -68,6 +66,8 @@ namespace WebPWrapper
 
         /// <summary>Gets or sets the scale option for the output (after cropping, if <see cref="CropArea"/> is set)</summary>
         public BitmapSizeOptions ScaleSize { get; set; }
+
+        /// <summary>Gets or sets the crop area for the input</summary>
         public Int32Rect CropArea => this.crop;
 
         internal bool HasScaling
@@ -84,7 +84,9 @@ namespace WebPWrapper
             }
         }
 
-        internal void ApplyOptions(ref WebPDecoderConfig config)
+        /// <summary>Applies the options on a <seealso cref="WebPDecoderConfig"/> which will be used for the decoder.</summary>
+        /// <param name="config">The config structure to applies the settings.</param>
+        public void ApplyOptions(ref WebPDecoderConfig config)
         {
             ref var options = ref config.options;
 

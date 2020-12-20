@@ -38,7 +38,10 @@ namespace WebPWrapper.LowLevel
         internal delegate int WebPGetInfo(IntPtr data, UIntPtr data_size, out int width, out int height);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int WebPDecodeAutoInto(IntPtr data, UIntPtr data_size, IntPtr output_buffer, int output_buffer_size, int output_stride);
+        internal delegate int WebPGetInfoWithPointer(IntPtr data, UIntPtr data_size, IntPtr width, IntPtr height);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate IntPtr WebPDecodeAutoInto(IntPtr data, UIntPtr data_size, IntPtr output_buffer, UIntPtr output_buffer_size, int output_stride);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate int WebPInitDecoderConfigInternal(ref WebPDecoderConfig webPDecoderConfig, int WEBP_DECODER_ABI_VERSION);
@@ -53,10 +56,10 @@ namespace WebPWrapper.LowLevel
         internal delegate void WebPFreeDecBuffer(ref WebPDecBuffer buffer);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int WebPEncodeAuto(IntPtr pixelData, int width, int height, int stride, float quality_factor, out IntPtr outputData);
+        internal delegate UIntPtr WebPEncodeAuto(IntPtr pixelData, int width, int height, int stride, float quality_factor, out IntPtr outputData);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int WebPEncodeLosslessAuto(IntPtr pixelData, int width, int height, int stride, out IntPtr outputData);
+        internal delegate UIntPtr WebPEncodeLosslessAuto(IntPtr pixelData, int width, int height, int stride, out IntPtr outputData);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void WebPFree(IntPtr pointer);
@@ -71,9 +74,15 @@ namespace WebPWrapper.LowLevel
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void WebPMemoryWriterClear(ref WebPMemoryWriter writer);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate int WebPPictureAlloc(ref WebPPicture picture);
+
         #region "| Progressive decode |"
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate IntPtr WebPINewDecoder(ref WebPDecBuffer wpic);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate IntPtr WebPIDecode(IntPtr input_buffer, UIntPtr input_buffer_size, ref WebPDecoderConfig config);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate IntPtr WebPINewDecoderFromPointer(IntPtr pointer);

@@ -154,6 +154,12 @@ namespace WebPWrapper.LowLevel
     };
 
     /// <summary>Main exchange structure (input samples, output bytes, statistics)</summary>
+    /// <remarks>
+    /// Once WebPPictureInit() has been called, it's ok to make all the INPUT fields
+    /// (use_argb, y/u/v, argb, ...) point to user-owned data, even if
+    /// WebPPictureAlloc() has been called. Depending on the value use_argb,
+    /// it's guaranteed that either *argb or *y/*u/*v content will be kept untouched.
+    /// </remarks>
     [StructLayout(LayoutKind.Sequential)]
     public struct WebPPicture
     {
@@ -190,8 +196,9 @@ namespace WebPWrapper.LowLevel
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3, ArraySubType = UnmanagedType.U4)]
         private uint[] pad2;
         /// <summary>Byte-emission hook, to store compressed bytes as they are ready.</summary>
+        /// <remarks>The function must be "alive" (Not collected by Garbage Collector) for the whole encoding's process. You should use <seealso cref="WebpDelegate.Create(Delegate)"/> to wrap it or <seealso cref="GCHandle"/> or keeping a reference to the delegate to keep it alive.</remarks>
         [MarshalAs(UnmanagedType.FunctionPtr)]
-        public Delegates.WebPWriterFunction writer;
+        public WebpDelegate.WebPWriterFunction writer;
         /// <summary>Can be used by the writer.</summary>
         public IntPtr custom_ptr;
         /// <summary>map for extra information (only for lossy compression mode)</summary>
@@ -204,8 +211,9 @@ namespace WebPWrapper.LowLevel
         /// <summary>Error code for the latest error encountered during encoding</summary>
         public WebPEncodingError error_code;
         /// <summary>If not NULL, report progress during encoding.</summary>
+        /// <remarks>The function must be "alive" (Not collected by Garbage Collector) for the whole encoding's process. You should use <seealso cref="WebpDelegate.Create(Delegate)"/> to wrap it or <seealso cref="GCHandle"/> or keeping a reference to the delegate to keep it alive.</remarks>
         [MarshalAs(UnmanagedType.FunctionPtr)]
-        public Delegates.WebPProgressHook progress_hook;
+        public WebpDelegate.WebPProgressHook progress_hook;
         /// <summary>this field is free to be set to any value and used during callbacks (like progress-report e.g.).</summary>
         public IntPtr user_data;
         /// <summary>Padding for later use.</summary>

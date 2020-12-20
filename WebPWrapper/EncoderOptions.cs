@@ -1,9 +1,10 @@
 ﻿using System;
-using WebPWrapper.WPF.LowLevel;
+using WebPWrapper.LowLevel;
 
 namespace WebPWrapper
 {
     /// <summary>Options for WebP encoder</summary>
+    /// <remarks>Just a convenient class. You still need to call <seealso cref="ApplyOptions(ILibwebp, ref WebPConfig)"/> and use the <seealso cref="WebPConfig"/> structure.</remarks>
     public sealed class EncoderOptions
     {
         private readonly CompressionType _compressionType;
@@ -20,6 +21,7 @@ namespace WebPWrapper
             this._preset = preset;
             this._compressionType = compression;
             this.CompressionLevel = level;
+            this._pass = 1;
         }
 
         /// <summary>Init new option instance</summary>
@@ -42,7 +44,9 @@ namespace WebPWrapper
         public EncoderOptions(float quality) : this(WebPPreset.Default, quality) { }
 
         /// <summary>Init new option instance with default quality value 75 (According to Google)</summary>
-        /// <remarks>According to https://github.com/webmproject/libwebp/blob/5c395f1d71f8e753a23f1e256544bf96cb349e3e/src/webp/encode.h#L170</remarks>
+        /// <remarks>
+        /// According to https://github.com/webmproject/libwebp/blob/5c395f1d71f8e753a23f1e256544bf96cb349e3e/src/webp/encode.h#L170
+        /// </remarks>
         public EncoderOptions() : this(75f) { }
 
         private int _alpha_quality;
@@ -93,6 +97,21 @@ namespace WebPWrapper
                 this._quality = value;
             }
         }
+
+        private int _pass;
+        /// <summary>Number of entropy-analysis passes.</summary>
+        /// <remarks>Value between 1 and 10</remarks>
+        public int Pass
+        {
+            get => this._pass;
+            set
+            {
+                if (value < 1 || value > 10)
+                    throw new IndexOutOfRangeException("Must be between 1 and 100.");
+                this._pass = value;
+            }
+        }
+
         /// <summary>Only be used if <see cref="AutoFilter"/> is True or <see cref="FilterStrength"/> has non-zero value. Null = default of preset.</summary>
         public FilterType? FilterType { get; set; }
         /// <summary>Hint for image type (Currently is for lossless compression). Null = default of preset.</summary>
@@ -113,18 +132,20 @@ namespace WebPWrapper
             }
         }
 
-        internal void InitConfig(Libwebp libwebp, ref WebPConfig config)
+/// <summary>Applies the option values from this instance to a <seealso cref="WebPConfig"/> structure.</summary>
+        /// <param name="libwebp">The interface of the native library to validate the config.</param>
+        /// <param name="config">The <seealso cref="WebPConfig"/> structure to apply the values on.</param>
+        /// <returns>Returns true if the option values are valid. Otherwise false.</returns>
+        public bool ApplyOptions(in ILibwebp libwebp, ref WebPConfig config)
         {
-            int val_method = (int)this.CompressionLevel,
-                val_webpencoderversion = libwebp.WebPGetEncoderVersion();
+            if (libwebp == null)
+            {
+                throw new ArgumentNullException(nameof(libwebp));
+            }
+            int val_method = (int)this.CompressionLevel;
             bool val_isLossy = (this.CompressionType == CompressionType.Lossy),
                 val_isLossless = (this.CompressionType == CompressionType.Lossless),
                 val_isNearLossless = (this.CompressionType == CompressionType.NearLossless);
-
-            if (val_isNearLossless && val_webpencoderversion <= 1082)
-            {
-                throw new NotSupportedException($"This encoder version [{(val_webpencoderversion >> 16) % 256}.{(val_webpencoderversion >> 8) % 256}.{val_webpencoderversion % 256}] does not suport Near-Lossless compression");
-            }
 
             // This is something work for all compression type
             if (libwebp.WebPConfigInit(ref config, this.Preset, this.Quality) == 0)
@@ -134,7 +155,7 @@ namespace WebPWrapper
             {
                 if (libwebp.IsFunctionExists("WebPConfigLosslessPreset"))
                 {
-                    if (libwebp.WebPConfigLosslessPreset(ref config, (int)this.CompressionLevel) == 0)
+                    if (libwebp.WebPConfigLosslessPreset(ref config, this.CompressionLevel) == 0)
                         throw new InvalidOperationException("Can't config lossless preset");
                 }
             }
@@ -152,10 +173,7 @@ namespace WebPWrapper
                 }
                 config.segments = 4;
                 config.partitions = 3;
-                if (val_webpencoderversion > 1082) //Old version don´t suport preprocessing 4
-                    config.preprocessing = 4;
-                else
-                    config.preprocessing = 3;
+                config.preprocessing = 4;
             }
             else if (val_isLossless)
             {
@@ -179,7 +197,9 @@ namespace WebPWrapper
             config.exact = (this.PreserveRGB ? 1 : 0);
 
             if (this.AutoFilter.HasValue)
+            {
                 config.autofilter = (this.AutoFilter.Value ? 1 : 0);
+            }
 
             config.thread_level = (this.UseMultithreading ? 1 : 0);
 
@@ -188,17 +208,32 @@ namespace WebPWrapper
             config.quality = this._quality;
 
             if (this.FilterSharpness.HasValue)
+            {
                 config.filter_sharpness = (int)this.FilterSharpness.Value;
+            }
 
             config.filter_strength = this._filter_strength;
             if (this.FilterType.HasValue)
+            {
                 config.filter_type = (int)this.FilterType.Value;
+            }
 
             if (this.ImageHint.HasValue)
+            {
                 config.image_hint = this.ImageHint.Value;
+            }
 
-            // I don't know
-            config.pass = config.method + 1;
+            config.pass = this._pass;
+
+            if (libwebp.WebPValidateConfig(ref config) == 1)
+            {
+                return true;
+            }
+            else
+            {
+                config.preprocessing = 3;
+                return (libwebp.WebPValidateConfig(ref config) == 1);
+            }
         }
     }
 }

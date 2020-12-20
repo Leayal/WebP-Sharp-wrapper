@@ -329,7 +329,7 @@ namespace WebPWrapper.LowLevel
         /// <see cref="WebPConfigInit"/>() must have succeeded before using the 'config' object.
         /// Note that the default values are '<paramref name="preset"/>'=<seealso cref="WebPPreset.Default"/> and '<paramref name="quality"/>'=75.
         /// </remarks>
-        public int WebPConfigInit(ref WebPConfig config, WebPPreset preset, float quality)
+        public int WebPConfigInit(ref WebPConfig config, in WebPPreset preset, in float quality)
         {
             if (this.TryGetFunction< NativeDelegates.WebPConfigInitInternal >("WebPConfigInitInternal", out var @delegate))
             {
@@ -343,31 +343,24 @@ namespace WebPWrapper.LowLevel
         /// <param name="data_size">Size of rawWebP</param>
         /// <param name="features">Features of WebP image</param>
         /// <returns>Returns <seealso cref="VP8StatusCode.VP8_STATUS_OK"/> if success. Otherwise the error code.</returns>
-        public VP8StatusCode WebPGetFeatures(IntPtr rawWebP, uint data_size, ref WebPBitstreamFeatures features)
+        public VP8StatusCode WebPGetFeatures(in IntPtr rawWebP, in UIntPtr data_size, ref WebPBitstreamFeatures features)
         {
             if (this.TryGetFunction<NativeDelegates.WebPGetFeaturesInternal>("WebPGetFeaturesInternal", out var @delegate))
             {
-                return (VP8StatusCode)@delegate.Invoke(rawWebP, new UIntPtr(data_size), ref features, Define.WEBP_DECODER_ABI_VERSION);
+                return (VP8StatusCode)@delegate.Invoke(rawWebP, data_size, ref features, Define.WEBP_DECODER_ABI_VERSION);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPGetFeaturesInternal' function from the library. Wrong library or wrong version?");
         }
-
-        /// <summary>Get info of WepP image</summary>
-        /// <param name="rawWebP">Bytes[] of webp image</param>
-        /// <param name="data_size">Size of rawWebP</param>
-        /// <param name="features">Features of WebP image</param>
-        /// <returns>VP8StatusCode</returns>
-        public VP8StatusCode WebPGetFeatures(IntPtr rawWebP, int data_size, ref WebPBitstreamFeatures features) => this.WebPGetFeatures(rawWebP, Convert.ToUInt32(data_size), ref features);
 
         /// <summary>Activate the lossless compression mode with the desired efficiency.</summary>
         /// <param name="config">The WebPConfig struct</param>
         /// <param name="level">between 0 (fastest, lowest compression) and 9 (slower, best compression)</param>
         /// <returns>0 in case of parameter errorr</returns>
-        public int WebPConfigLosslessPreset(ref WebPConfig config, int level)
+        public int WebPConfigLosslessPreset(ref WebPConfig config, in CompressionLevel level)
         {
             if (this.TryGetFunction<NativeDelegates.WebPConfigLosslessPreset>("WebPConfigLosslessPreset", out var @delegate))
             {
-                return @delegate.Invoke(ref config, level);
+                return @delegate.Invoke(ref config, (int)level);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPConfigLosslessPreset' function from the library. Wrong library or wrong version?");
         }
@@ -396,12 +389,25 @@ namespace WebPWrapper.LowLevel
             throw new EntryPointNotFoundException("Cannot find 'WebPPictureInitInternal' function from the library. Wrong library or wrong version?");
         }
 
+        /// <summary>Convenience allocation / deallocation based on picture->width/height. Allocate y/u/v buffers as per colorspace/width/height specification.</summary>
+        /// <param name="wpic">The <see cref="WebPPicture"/> structure for the allocation.</param>
+        /// <returns>Returns 0 in case of memory error.</returns>
+        /// <remarks>This function will free the previous buffer if needed.</remarks>
+        public int WebPPictureAlloc(ref WebPPicture wpic)
+        {
+            if (this.TryGetFunction<NativeDelegates.WebPPictureAlloc>("WebPPictureAlloc", out var @delegate))
+            {
+                return @delegate.Invoke(ref wpic);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPPictureAlloc' function from the library. Wrong library or wrong version?");
+        }
+
         /// <summary>Colorspace conversion function to import RGB samples.</summary>
         /// <param name="wpic">The WebPPicture struct</param>
         /// <param name="bgr">Point to BGR data</param>
         /// <param name="stride">stride of BGR data</param>
         /// <returns>Returns 0 in case of memory error.</returns>
-        public int WebPPictureImportBGR(ref WebPPicture wpic, IntPtr bgr, int stride)
+        public int WebPPictureImportBGR(ref WebPPicture wpic, in IntPtr bgr, in int stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportBGR", out var @delegate))
             {
@@ -417,7 +423,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="rgba">Point to BGRA data</param>
         /// <param name="stride">stride of BGRA data</param>
         /// <returns></returns>
-        public int WebPPictureImportBGRA(ref WebPPicture wpic, IntPtr rgba, int stride)
+        public int WebPPictureImportBGRA(ref WebPPicture wpic, in IntPtr rgba, in int stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportBGRA", out var @delegate))
             {
@@ -431,7 +437,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="rgb">Point to RGB data</param>
         /// <param name="stride">stride of RGB data</param>
         /// <returns>Returns 0 in case of memory error.</returns>
-        public int WebPPictureImportRGB(ref WebPPicture wpic, IntPtr rgb, int stride)
+        public int WebPPictureImportRGB(ref WebPPicture wpic, in IntPtr rgb, in int stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportRGB", out var @delegate))
             {
@@ -445,7 +451,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="rgba">Point to RGBA data</param>
         /// <param name="stride">stride of RGBA data</param>
         /// <returns>Returns 0 in case of memory error.</returns>
-        public int WebPPictureImportRGBA(ref WebPPicture wpic, IntPtr rgba, int stride)
+        public int WebPPictureImportRGBA(ref WebPPicture wpic, in IntPtr rgba, in int stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportRGBA", out var @delegate))
             {
@@ -459,7 +465,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="bgrx">Point to BGRX data</param>
         /// <param name="stride">stride of BGRX data</param>
         /// <returns>Returns 0 in case of memory error.</returns>
-        public int WebPPictureImportBGRX(ref WebPPicture wpic, IntPtr bgrx, int stride)
+        public int WebPPictureImportBGRX(ref WebPPicture wpic, in IntPtr bgrx, in int stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPPictureImportAuto>("WebPPictureImportBGRX", out var @delegate))
             {
@@ -495,17 +501,30 @@ namespace WebPWrapper.LowLevel
             throw new EntryPointNotFoundException("Cannot find 'WebPPictureFree' function from the library. Wrong library or wrong version?");
         }
 
-        /// <summary>Validate the WebP image header and retrieve the image height and width. Pointers *width and *height can be passed NULL if deemed irrelevant</summary>
+        /// <summary>Validate the WebP image header and retrieve the image height and width.</summary>
         /// <param name="data">Pointer to WebP image data</param>
         /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
-        /// <param name="width">The range is limited currently from 1 to 16383</param>
-        /// <param name="height">The range is limited currently from 1 to 16383</param>
+        /// <param name="width">The width (in pixels) of the image</param>
+        /// <param name="height">The height (in pixels) of the image</param>
         /// <returns>1 if success, otherwise error code returned in the case of (a) formatting error(s).</returns>
-        public int WebPGetInfo(IntPtr data, int data_size, out int width, out int height)
+        public int WebPGetInfo(in IntPtr data, in UIntPtr data_size, out int width, out int height)
         {
             if (this.TryGetFunction<NativeDelegates.WebPGetInfo>("WebPGetInfo", out var @delegate))
             {
-                return @delegate.Invoke(data, (UIntPtr)data_size, out width, out height);
+                return @delegate.Invoke(data, data_size, out width, out height);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPGetInfo' function from the library. Wrong library or wrong version?");
+        }
+
+        /// <summary>Validate the WebP image header.</summary>
+        /// <param name="data">Pointer to WebP image data</param>
+        /// <param name="data_size">This is the size of the memory block pointed to by data containing the image data</param>
+        /// <returns>1 if success, otherwise error code returned in the case of (a) formatting error(s).</returns>
+        public int WebPGetInfo(in IntPtr data, in UIntPtr data_size)
+        {
+            if (this.TryGetFunction<NativeDelegates.WebPGetInfoWithPointer>("WebPGetInfo", out var @delegate))
+            {
+                return @delegate.Invoke(data, data_size, IntPtr.Zero, IntPtr.Zero);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPGetInfo' function from the library. Wrong library or wrong version?");
         }
@@ -517,11 +536,11 @@ namespace WebPWrapper.LowLevel
         /// <param name="output_buffer_size">Size of allocated buffer</param>
         /// <param name="output_stride">Specifies the distance between scanlines</param>
         /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
-        public int WebPDecodeRGBAInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        public IntPtr WebPDecodeRGBAInto(in IntPtr data, in UIntPtr data_size, in IntPtr output_buffer, in UIntPtr output_buffer_size, in int output_stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeRGBAInto", out var @delegate))
             {
-                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+                return @delegate.Invoke(data, data_size, output_buffer, output_buffer_size, output_stride);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPDecodeRGBAInto' function from the library. Wrong library or wrong version?");
         }
@@ -533,11 +552,11 @@ namespace WebPWrapper.LowLevel
         /// <param name="output_buffer_size">Size of allocated buffer</param>
         /// <param name="output_stride">Specifies the distance between scanlines</param>
         /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
-        public int WebPDecodeARGBInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        public IntPtr WebPDecodeARGBInto(in IntPtr data, in UIntPtr data_size, in IntPtr output_buffer, in UIntPtr output_buffer_size, in int output_stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeARGBInto", out var @delegate))
             {
-                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+                return @delegate.Invoke(data, data_size, output_buffer, output_buffer_size, output_stride);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPDecodeARGBInto' function from the library. Wrong library or wrong version?");
         }
@@ -549,11 +568,11 @@ namespace WebPWrapper.LowLevel
         /// <param name="output_buffer_size">Size of allocated buffer</param>
         /// <param name="output_stride">Specifies the distance between scanlines</param>
         /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
-        public int WebPDecodeBGRAInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        public IntPtr WebPDecodeBGRAInto(in IntPtr data, in UIntPtr data_size, in IntPtr output_buffer, in UIntPtr output_buffer_size, in int output_stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeBGRAInto", out var @delegate))
             {
-                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+                return @delegate.Invoke(data, data_size, output_buffer, output_buffer_size, output_stride);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPDecodeBGRAInto' function from the library. Wrong library or wrong version?");
         }
@@ -565,11 +584,11 @@ namespace WebPWrapper.LowLevel
         /// <param name="output_buffer_size">Size of allocated buffer</param>
         /// <param name="output_stride">Specifies the distance between scanlines</param>
         /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
-        public int WebPDecodeRGBInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        public IntPtr WebPDecodeRGBInto(in IntPtr data, in UIntPtr data_size, in IntPtr output_buffer, in UIntPtr output_buffer_size, in int output_stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeRGBInto", out var @delegate))
             {
-                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+                return @delegate.Invoke(data, data_size, output_buffer, output_buffer_size, output_stride);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPDecodeRGBInto' function from the library. Wrong library or wrong version?");
         }
@@ -581,11 +600,11 @@ namespace WebPWrapper.LowLevel
         /// <param name="output_buffer_size">Size of allocated buffer</param>
         /// <param name="output_stride">Specifies the distance between scanlines</param>
         /// <returns>output_buffer if function succeeds; NULL otherwise</returns>
-        public int WebPDecodeBGRInto(IntPtr data, uint data_size, IntPtr output_buffer, int output_buffer_size, int output_stride)
+        public IntPtr WebPDecodeBGRInto(in IntPtr data, in UIntPtr data_size, in IntPtr output_buffer, in UIntPtr output_buffer_size, in int output_stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPDecodeAutoInto>("WebPDecodeBGRInto", out var @delegate))
             {
-                return @delegate.Invoke(data, new UIntPtr(data_size), output_buffer, output_buffer_size, output_stride);
+                return @delegate.Invoke(data, data_size, output_buffer, output_buffer_size, output_stride);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPDecodeBGRInto' function from the library. Wrong library or wrong version?");
         }
@@ -607,11 +626,11 @@ namespace WebPWrapper.LowLevel
         /// <param name="data_size">Size of WebP data </param>
         /// <param name="webPDecoderConfig">Configuration struct</param>
         /// <returns>VP8_STATUS_OK if the decoding was successful</returns>
-        public VP8StatusCode WebPDecode(IntPtr data, int data_size, ref WebPDecoderConfig webPDecoderConfig)
+        public VP8StatusCode WebPDecode(in IntPtr data, in UIntPtr data_size, ref WebPDecoderConfig webPDecoderConfig)
         {
             if (this.TryGetFunction<NativeDelegates.WebPDecode>("WebPDecode", out var @delegate))
             {
-                return @delegate.Invoke(data, (UIntPtr)data_size, ref webPDecoderConfig);
+                return @delegate.Invoke(data, data_size, ref webPDecoderConfig);
             }
             throw new EntryPointNotFoundException("Cannot find 'WebPDecode' function from the library. Wrong library or wrong version?");
         }
@@ -649,7 +668,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="quality_factor">Ranges from 0 (lower quality) to 100 (highest quality). Controls the loss and quality during compression</param>
         /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
-        public int WebPEncodeBGR(IntPtr bgr, int width, int height, int stride, float quality_factor, out IntPtr outputData)
+        public UIntPtr WebPEncodeBGR(in IntPtr bgr, in int width, in int height, in int stride, in float quality_factor, out IntPtr outputData)
         {
             if (this.TryGetFunction<NativeDelegates.WebPEncodeAuto>("WebPEncodeBGR", out var @delegate))
             {
@@ -667,7 +686,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
-        public int WebPEncodeRGB(IntPtr rgb, int width, int height, int stride, float quality_factor, out IntPtr outputData)
+        public UIntPtr WebPEncodeRGB(in IntPtr rgb, in int width, in int height, in int stride, in float quality_factor, out IntPtr outputData)
         {
             if (this.TryGetFunction<NativeDelegates.WebPEncodeAuto>("WebPEncodeRGB", out var @delegate))
             {
@@ -685,7 +704,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
-        public int WebPEncodeBGRA(IntPtr bgra, int width, int height, int stride, float quality_factor, out IntPtr outputData)
+        public UIntPtr WebPEncodeBGRA(in IntPtr bgra, in int width, in int height, in int stride, in float quality_factor, out IntPtr outputData)
         {
             if (this.TryGetFunction<NativeDelegates.WebPEncodeAuto>("WebPEncodeBGRA", out var @delegate))
             {
@@ -703,7 +722,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
-        public int WebPEncodeRGBA(IntPtr rgba, int width, int height, int stride, float quality_factor, out IntPtr outputData)
+        public UIntPtr WebPEncodeRGBA(in IntPtr rgba, in int width, in int height, in int stride, in float quality_factor, out IntPtr outputData)
         {
             if (this.TryGetFunction<NativeDelegates.WebPEncodeAuto>("WebPEncodeRGBA", out var @delegate))
             {
@@ -719,7 +738,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="outputData">output_buffer with WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
-        public int WebPEncodeLosslessBGR(IntPtr bgr, int width, int height, int stride, out IntPtr outputData)
+        public UIntPtr WebPEncodeLosslessBGR(in IntPtr bgr, in int width, in int height, in int stride, out IntPtr outputData)
         {
             if (this.TryGetFunction<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessBGR", out var @delegate))
             {
@@ -735,7 +754,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
-        public int WebPEncodeLosslessBGRA(IntPtr bgra, int width, int height, int stride, out IntPtr outputData)
+        public UIntPtr WebPEncodeLosslessBGRA(in IntPtr bgra, in int width, in int height, in int stride, out IntPtr outputData)
         {
             if (this.TryGetFunction<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessBGRA", out var @delegate))
             {
@@ -751,7 +770,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="stride">Specifies the distance between scanlines</param>
         /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
-        public int WebPEncodeLosslessRGB(IntPtr rgb, int width, int height, int stride, out IntPtr outputData)
+        public UIntPtr WebPEncodeLosslessRGB(in IntPtr rgb, in int width, in int height, in int stride, out IntPtr outputData)
         {
             if (this.TryGetFunction<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessRGB", out var @delegate))
             {
@@ -768,7 +787,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="outputData">The output buffer's pointer which contains WebP image</param>
         /// <returns>Size of WebP Image or 0 if an error occurred</returns>
         /// <returns></returns>
-        public int WebPEncodeLosslessRGBA(IntPtr rgba, int width, int height, int stride, out IntPtr outputData)
+        public UIntPtr WebPEncodeLosslessRGBA(in IntPtr rgba, in int width, in int height, in int stride, out IntPtr outputData)
         {
             if (this.TryGetFunction<NativeDelegates.WebPEncodeLosslessAuto>("WebPEncodeLosslessRGBA", out var @delegate))
             {
@@ -779,7 +798,7 @@ namespace WebPWrapper.LowLevel
 
         /// <summary>Releases memory returned by the WebPEncode</summary>
         /// <param name="pointer">Pointer to memory</param>
-        public void WebPFree(IntPtr pointer)
+        public void WebPFree(in IntPtr pointer)
         {
             if (this.TryGetFunction<NativeDelegates.WebPFree>("WebPFree", out var @delegate))
             {
@@ -816,8 +835,8 @@ namespace WebPWrapper.LowLevel
         /// <param name="refPicture">Reference picture</param>
         /// <param name="metric_type">0 = PSNR, 1 = SSIM, 2 = LSIM</param>
         /// <param name="pResult">dB in the Y/U/V/Alpha/All order</param>
-        /// <returns>False in case of error (src and ref don't have same dimension, ...)</returns>
-        public int WebPPictureDistortion(ref WebPPicture srcPicture, ref WebPPicture refPicture, int metric_type, IntPtr pResult)
+        /// <returns>1 if success, 0 in case of error (src and ref don't have same dimension, ...)</returns>
+        public int WebPPictureDistortion(ref WebPPicture srcPicture, ref WebPPicture refPicture, in int metric_type, in IntPtr pResult)
         {
             if (this.TryGetFunction<NativeDelegates.WebPPictureDistortion>("WebPPictureDistortion", out var @delegate))
             {
@@ -848,6 +867,21 @@ namespace WebPWrapper.LowLevel
             throw new EntryPointNotFoundException("Cannot find 'WebPINewDecoder' function from the library. Wrong library or wrong version?");
         }
 
+        /// <summary>Creates a new incremental decoder with the given config</summary>
+        /// <param name="input_buffer">The memory pointer to the Webp image data buffer. Can be NULL.</param>
+        /// <param name="input_buffer_size">The size of the Webp image data buffer.</param>
+        /// <param name="config">The configuration for the decoder.</param>
+        /// <returns>Returns NULL if the allocation failed</returns>
+        /// <remarks>In case <paramref name="input_buffer"/> is NULL, <paramref name="input_buffer_size"/> is ignored and the function.</remarks>
+        public IntPtr WebPIDecode(in IntPtr input_buffer, in UIntPtr input_buffer_size, ref WebPDecoderConfig config)
+        {
+            if (this.TryGetFunction<NativeDelegates.WebPIDecode>("WebPIDecode", out var @delegate))
+            {
+                return @delegate.Invoke(input_buffer, input_buffer_size, ref config);
+            }
+            throw new EntryPointNotFoundException("Cannot find 'WebPIDecode' function from the library. Wrong library or wrong version?");
+        }
+
         /// <summary>Creates a new incremental decoder with default settings (Output with MODE_RGB)</summary>
         /// <returns>Returns NULL if the allocation failed</returns>
         public IntPtr WebPINewDecoder()
@@ -873,7 +907,7 @@ namespace WebPWrapper.LowLevel
         /// parameters are ignored.
         /// </remarks>
         /// <returns>Returns NULL if the allocation failed, or if some parameters are invalid</returns>
-        public IntPtr WebPINewRGB(WEBP_CSP_MODE colorspace, IntPtr output_buffer, UIntPtr output_buffer_size, int output_stride)
+        public IntPtr WebPINewRGB(in WEBP_CSP_MODE colorspace, in IntPtr output_buffer, in UIntPtr output_buffer_size, in int output_stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPINewRGB>("WebPINewRGB", out var @delegate))
             {
@@ -903,10 +937,10 @@ namespace WebPWrapper.LowLevel
         /// MODE_YUVA) when decoding starts. All parameters are then ignored.
         /// </remarks>
         /// <returns>Returns NULL if the allocation failed or if a parameter is invalid</returns>
-        public IntPtr WebPINewYUVA(IntPtr luma, UIntPtr luma_size, int luma_stride,
-            IntPtr u, UIntPtr u_size, int u_stride,
-            IntPtr v, UIntPtr v_size, int v_stride,
-            IntPtr a, UIntPtr a_size, int a_stride)
+        public IntPtr WebPINewYUVA(in IntPtr luma, in UIntPtr luma_size, in int luma_stride,
+            in IntPtr u, in UIntPtr u_size, in int u_stride,
+            in IntPtr v, in UIntPtr v_size, in int v_stride,
+            in IntPtr a, in UIntPtr a_size, in int a_stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPINewYUVA>("WebPINewYUVA", out var @delegate))
             {
@@ -918,7 +952,7 @@ namespace WebPWrapper.LowLevel
         /// <summary>Deletes the WebPIDecoder object and associated memory</summary>
         /// <param name="idec">The reference to <see cref="WebPIDecoder"/> which will be deleted.</param>
         /// <remarks>Must always be called if WebPINewDecoder, WebPINewRGB or WebPINewYUV succeeded.</remarks>
-        public void WebPIDelete(IntPtr idec)
+        public void WebPIDelete(in IntPtr idec)
         {
             if (this.TryGetFunction<NativeDelegates.WebPIDelete>("WebPIDelete", out var @delegate))
             {
@@ -937,7 +971,7 @@ namespace WebPWrapper.LowLevel
         /// the image is successfully decoded. Returns <see cref="VP8StatusCode.VP8_STATUS_SUSPENDED"/> when more
         /// data is expected. Returns error in other cases.
         /// </returns>
-        public VP8StatusCode WebPIAppend(IntPtr idec, IntPtr data, UIntPtr data_size)
+        public VP8StatusCode WebPIAppend(in IntPtr idec, in IntPtr data, in UIntPtr data_size)
         {
             if (this.TryGetFunction<NativeDelegates.WebPIAppendOrUpdate>("WebPIAppend", out var @delegate))
             {
@@ -947,7 +981,7 @@ namespace WebPWrapper.LowLevel
         }
 
         /// <summary>
-        /// A variant of the <see cref="WebPIAppend(IntPtr, IntPtr, UIntPtr)"/> to be used when data buffer contains
+        /// A variant of the <see cref="WebPIAppend(in IntPtr, in IntPtr, in UIntPtr)"/> to be used when data buffer contains
         /// partial data from the beginning. In this case data buffer is not copied
         /// to the internal memory
         /// </summary>
@@ -962,7 +996,7 @@ namespace WebPWrapper.LowLevel
         /// the image is successfully decoded. Returns <see cref="VP8StatusCode.VP8_STATUS_SUSPENDED"/> when more
         /// data is expected. Returns error in other cases.
         /// </returns>
-        public VP8StatusCode WebPIUpdate(IntPtr idec, IntPtr data, UIntPtr data_size)
+        public VP8StatusCode WebPIUpdate(in IntPtr idec, in IntPtr data, in UIntPtr data_size)
         {
             if (this.TryGetFunction<NativeDelegates.WebPIAppendOrUpdate>("WebPIUpdate", out var @delegate))
             {
@@ -984,7 +1018,7 @@ namespace WebPWrapper.LowLevel
         /// needed. The values in these pointers are only valid on successful (non-NULL) return.
         /// </remarks>
         /// <returns>Returns <see cref="IntPtr.Zero"/> if output params are not initialized yet</returns>
-        public IntPtr WebPIDecGetRGB(IntPtr idec, ref int last_y, ref int width, ref int height, ref int stride)
+        public IntPtr WebPIDecGetRGB(in IntPtr idec, ref int last_y, ref int width, ref int height, ref int stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPIDecGetRGB>("WebPIDecGetRGB", out var @delegate))
             {
@@ -1015,7 +1049,7 @@ namespace WebPWrapper.LowLevel
         /// If there is no alpha information the alpha pointer '<paramref name="a"/>' will be returned <see cref="IntPtr.Zero"/>
         /// </remarks>
         /// <returns>Returns pointer to the luma plane or <see cref="IntPtr.Zero"/> in case of error</returns>
-        public IntPtr WebPIDecGetYUVA(IntPtr idec, ref int last_y, ref IntPtr u, ref IntPtr v, ref IntPtr a, ref int width, ref int height, ref int stride, ref int uv_stride, ref int a_stride)
+        public IntPtr WebPIDecGetYUVA(in IntPtr idec, ref int last_y, ref IntPtr u, ref IntPtr v, ref IntPtr a, ref int width, ref int height, ref int stride, ref int uv_stride, ref int a_stride)
         {
             if (this.TryGetFunction<NativeDelegates.WebPIDecGetYUVA>("WebPIDecGetYUVA", out var @delegate))
             {
@@ -1038,7 +1072,7 @@ namespace WebPWrapper.LowLevel
         /// Otherwise returns the pointer to the internal representation. This structure
         /// is read-only, tied to <seealso cref="WebPIDecoder"/>'s lifespan and should not be modified.
         /// </returns>
-        public IntPtr WebPIDecodedArea(IntPtr idec, ref int left, ref int top, ref int width, ref int height)
+        public IntPtr WebPIDecodedArea(in IntPtr idec, ref int left, ref int top, ref int width, ref int height)
         {
             if (this.TryGetFunction<NativeDelegates.WebPIDecodedArea>("WebPIDecodedArea", out var @delegate))
             {
@@ -1077,7 +1111,7 @@ namespace WebPWrapper.LowLevel
         /// <param name="functionName">The name of the function</param>
         /// <param name="args">Arguments for the function</param>
         /// <returns></returns>
-        public object DynamicInvoke(string functionName, params object[] args)
+        public object DynamicInvoke(in string functionName, params object[] args)
         {
             this.AssertLibraryCallFailure();
             if (this._functionPointer.TryGetValue(functionName, out var pointer))
@@ -1111,7 +1145,7 @@ namespace WebPWrapper.LowLevel
         /// <returns>A boolean determine whether the function is found or not</returns>
         /// <exception cref="ObjectDisposedException">The library has been unloaded</exception>
         /// <exception cref="InvalidOperationException">The library wasn not loaded successfully</exception>
-        public bool TryGetFunction<TDelegate>(string functionName, out TDelegate function) where TDelegate : Delegate
+        public bool TryGetFunction<TDelegate>(in string functionName, out TDelegate function) where TDelegate : Delegate
         {
             this.AssertLibraryCallFailure();
 
@@ -1164,7 +1198,7 @@ namespace WebPWrapper.LowLevel
         /// </summary>
         /// <param name="functionName">The name of the function</param>
         /// <returns>Return a boolean whether the given function name is existed or not.</returns>
-        public bool IsFunctionExists(string functionName)
+        public bool IsFunctionExists(in string functionName)
         {
             this.AssertLibraryCallFailure();
             if (this._functionPointer.TryGetValue(functionName, out _))
@@ -1183,7 +1217,7 @@ namespace WebPWrapper.LowLevel
             }
         }
 
-        private void AssertFunctionLoadFailure<TDelegate>(string functionName, bool throwOnNotFound = true) where TDelegate : Delegate
+        private void AssertFunctionLoadFailure<TDelegate>(in string functionName, in bool throwOnNotFound = true) where TDelegate : Delegate
         {
             if (!this.TryGetFunction<TDelegate>(functionName, out _))
             {
@@ -1217,7 +1251,7 @@ namespace WebPWrapper.LowLevel
         /// get a delegate that then gets an IUnknown implemented by this dll,
         /// you can not dispose this library until that IUnknown is collected. Else, you may free
         /// the library and then the CLR may call release on that IUnknown and it will crash.</remarks>
-        private static TDelegate FindFunctionPointers<TDelegate>(SafeLibraryHandle handle,  string functionName) where TDelegate : Delegate
+        private static TDelegate FindFunctionPointers<TDelegate>(in SafeLibraryHandle handle, in string functionName) where TDelegate : Delegate
         {
             IntPtr p = UnsafeNativeMethods.FindFunction(handle, functionName);
             // Failure is a common case, especially for adaptive code.
