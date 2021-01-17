@@ -7,9 +7,7 @@ namespace WebPWrapper
     /// <remarks>Just a convenient class. You still need to call <seealso cref="ApplyOptions(ILibwebp, ref WebPConfig)"/> and use the <seealso cref="WebPConfig"/> structure.</remarks>
     public sealed class EncoderOptions
     {
-        private readonly CompressionType _compressionType;
-        private readonly WebPPreset _preset;
-
+        private const int CompressionLevel_Lowest = (int)CompressionLevel.Lowest, CompressionLevel_Highest = (int)CompressionLevel.Highest;
         /// <summary>Init new option instance</summary>
         /// <param name="compression">Compression type...self-explain</param>
         /// <param name="level">Compression level profile. A tradeoff of "quality vs. speed".</param>
@@ -18,10 +16,9 @@ namespace WebPWrapper
         public EncoderOptions(CompressionType compression, CompressionLevel level, WebPPreset preset, float quality)
         {
             this._quality = quality;
-            this._preset = preset;
-            this._compressionType = compression;
+            this.Preset = preset;
+            this.CompressionType = compression;
             this.CompressionLevel = level;
-            this._pass = 1;
         }
 
         /// <summary>Init new option instance</summary>
@@ -69,21 +66,39 @@ namespace WebPWrapper
         public bool? AutoFilter { get; set; }
         /// <summary>Gets or sets the value determine whether the encoder is allowed to use multi-threading if available</summary>
         public bool UseMultithreading { get; set; } = true;
+        /// <summary>Gets or sets the value to allow the encoded image to support progressive decoding.</summary>
+        public bool SupportProgressiveDecoding { get; set; } = true;
+
         /// <summary>Predictive filtering method for alpha plane.</summary>
         public AlphaFiltering AlphaFiltering { get; set; } = AlphaFiltering.Fast;
         /// <summary>Gets or sets algorithm for encoding the alpha plane.</summary>
         public AlphaCompressionType AlphaCompression { get; set; } = AlphaCompressionType.Lossless;
-        /// <summary>Gets or sets flag(s) whether the encoder should reduce memory usage in exchange of CPU consumption (and compression speed).</summary>
+        /// <summary>Gets or sets flag(s) whether the encoder should reduce memory usage in exchange of CPU consumption.</summary>
         public MemoryAllowance MemoryUsage { get; set; } = MemoryAllowance.AsMuchAsPossible;
-        /// <summary>Gets the preset which was used to create this class</summary>
-        public WebPPreset Preset => this._preset;
+        /// <summary>The compression preset</summary>
+        public WebPPreset Preset { get; set; }
 
-        /// <summary>
-        /// Gets compression algorithm that is used to initialize this instance
-        /// </summary>
-        public CompressionType CompressionType => this._compressionType;
+        /// <summary>The compression algorithm.</summary>
+        public CompressionType CompressionType { get; set; }
+
+        private CompressionLevel _compressionLevel;
         /// <summary>Quality-speed trade off</summary>
-        public CompressionLevel CompressionLevel { get; set; }
+        public CompressionLevel CompressionLevel
+        {
+            get => this._compressionLevel;
+            set
+            {
+                if (this._compressionLevel != value)
+                {
+                    var int_val = (int)value;
+                    if (int_val < CompressionLevel_Lowest || int_val > CompressionLevel_Highest)
+                    {
+                        throw new ArgumentOutOfRangeException();
+                    }
+                    this._compressionLevel = value;
+                }
+            }
+        }
 
         private float _quality;
         /// <summary>The quality of image. Value between 1 and 100.</summary>
@@ -98,20 +113,6 @@ namespace WebPWrapper
             }
         }
 
-        private int _pass;
-        /// <summary>Number of entropy-analysis passes.</summary>
-        /// <remarks>Value between 1 and 10</remarks>
-        public int Pass
-        {
-            get => this._pass;
-            set
-            {
-                if (value < 1 || value > 10)
-                    throw new IndexOutOfRangeException("Must be between 1 and 100.");
-                this._pass = value;
-            }
-        }
-
         /// <summary>Only be used if <see cref="AutoFilter"/> is True or <see cref="FilterStrength"/> has non-zero value. Null = default of preset.</summary>
         public FilterType? FilterType { get; set; }
         /// <summary>Hint for image type (Currently is for lossless compression). Null = default of preset.</summary>
@@ -120,7 +121,8 @@ namespace WebPWrapper
         public FilterSharpness? FilterSharpness { get; set; }
 
         private int _filter_strength;
-        /// <summary>The strength of the filter. Value between 0 and 100. Require <see cref="AutoFilter"/> set to False</summary>
+        /// <summary>The strength of the filter.</summary>
+        /// <remarks>Value between 0 and 100. If '<see cref="AutoFilter"/>' is true, this setting will not be used.</remarks>
         public int FilterStrength
         {
             get => this._filter_strength;
@@ -132,17 +134,23 @@ namespace WebPWrapper
             }
         }
 
-/// <summary>Applies the option values from this instance to a <seealso cref="WebPConfig"/> structure.</summary>
+        /// <summary>Applies the option values from this instance to a <seealso cref="WebPConfig"/> structure.</summary>
+        /// <param name="factory">The factory of the native library to validate the config.</param>
+        /// <param name="config">The <seealso cref="WebPConfig"/> structure to apply the values on.</param>
+        /// <returns>Returns true if the option values are valid. Otherwise false.</returns>
+        public bool ApplyOptions(WebpFactory factory, ref WebPConfig config) => this.ApplyOptions(factory.GetUnmanagedInterface(), ref config);
+
+        /// <summary>Applies the option values from this instance to a <seealso cref="WebPConfig"/> structure.</summary>
         /// <param name="libwebp">The interface of the native library to validate the config.</param>
         /// <param name="config">The <seealso cref="WebPConfig"/> structure to apply the values on.</param>
         /// <returns>Returns true if the option values are valid. Otherwise false.</returns>
-        public bool ApplyOptions(in ILibwebp libwebp, ref WebPConfig config)
+        public bool ApplyOptions(ILibwebp libwebp, ref WebPConfig config)
         {
             if (libwebp == null)
             {
                 throw new ArgumentNullException(nameof(libwebp));
             }
-            int val_method = (int)this.CompressionLevel;
+            int val_level = (int)this.CompressionLevel;
             bool val_isLossy = (this.CompressionType == CompressionType.Lossy),
                 val_isLossless = (this.CompressionType == CompressionType.Lossless),
                 val_isNearLossless = (this.CompressionType == CompressionType.NearLossless);
@@ -150,7 +158,6 @@ namespace WebPWrapper
             // This is something work for all compression type
             if (libwebp.WebPConfigInit(ref config, this.Preset, this.Quality) == 0)
                 throw new InvalidOperationException("Can't config preset");
-
             if (!val_isLossy)
             {
                 if (libwebp.IsFunctionExists("WebPConfigLosslessPreset"))
@@ -159,34 +166,36 @@ namespace WebPWrapper
                         throw new InvalidOperationException("Can't config lossless preset");
                 }
             }
-
+            if (val_level > 6)
+            {
+                config.method = 6;
+            }
+            else if (val_level < 0)
+            {
+                config.method = 0;
+            }
+            else
+            {
+                config.method = val_level;
+            }
             if (val_isLossy)
             {
                 config.lossless = 0;
-                if (val_method > 6)
-                {
-                    config.method = 6;
-                }
-                else
-                {
-                    config.method = val_method;
-                }
                 config.segments = 4;
-                config.partitions = 3;
                 config.preprocessing = 4;
             }
             else if (val_isLossless)
             {
                 config.lossless = 1;
                 config.near_lossless = 0;
-                config.method = val_method;
             }
             else if (val_isNearLossless)
             {
                 // config.lossless = 1;
                 config.near_lossless = Convert.ToInt32(this._quality);
-                config.method = val_method;
             }
+
+            config.partitions = this.SupportProgressiveDecoding ? 0 : 3;
 
             config.alpha_compression = (int)this.AlphaCompression;
 
@@ -223,7 +232,16 @@ namespace WebPWrapper
                 config.image_hint = this.ImageHint.Value;
             }
 
-            config.pass = this._pass;
+            var num_pass = 1 + val_level;
+            if (num_pass < 1)
+            {
+                num_pass = 1;
+            }
+            else if (num_pass > 10)
+            {
+                num_pass = 10;
+            }
+            config.pass = num_pass;
 
             if (libwebp.WebPValidateConfig(ref config) == 1)
             {

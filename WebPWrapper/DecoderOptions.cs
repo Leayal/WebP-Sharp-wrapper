@@ -8,6 +8,7 @@ namespace WebPWrapper
     /// <remarks>Just a convenient class. You still need to call <seealso cref="ApplyOptions(ref WebPDecoderConfig)"/> and use the <seealso cref="WebPDecoderConfig"/> structure.</remarks>
     public sealed class DecoderOptions
     {
+        internal static readonly DecoderOptions Default = new DecoderOptions();
         /// <summary>
         /// Initialize a new option instance
         /// </summary>

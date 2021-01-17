@@ -16,7 +16,7 @@ namespace WebPWrapper.LowLevel
         /// <see cref="WEBP_WRITER_RESPONSE.ABORT"/> to request an abort of the encoding process, or <see cref="WEBP_WRITER_RESPONSE.CONTINUE"/> otherwise if
         /// everything is OK.
         /// </returns>
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         public delegate WEBP_WRITER_RESPONSE WebPWriterFunction([In] IntPtr data, [In] UIntPtr data_size, ref WebPPicture wpic);
 
         /// <summary>Progress hook, called from time to time to report progress</summary>
@@ -26,8 +26,8 @@ namespace WebPWrapper.LowLevel
         /// <see cref="WEBP_WRITER_RESPONSE.ABORT"/> to request an abort of the encoding process, or <see cref="WEBP_WRITER_RESPONSE.CONTINUE"/> otherwise if
         /// everything is OK.
         /// </returns>
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate WEBP_WRITER_RESPONSE WebPProgressHook([In] int percent, ref WebPPicture picture);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        public delegate WEBP_WRITER_RESPONSE WebPProgressHook(int percent, ref WebPPicture picture);
 
         /// <summary>Wrap the function and pinned it in the memory</summary>
         /// <param name="func">The function to be pinned.</param>

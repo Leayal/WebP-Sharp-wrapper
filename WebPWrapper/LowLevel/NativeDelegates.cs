@@ -88,7 +88,7 @@ namespace WebPWrapper.LowLevel
         internal delegate IntPtr WebPINewDecoderFromPointer(IntPtr pointer);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate IntPtr WebPINewRGB(WEBP_CSP_MODE colorspace, IntPtr output_buffer, UIntPtr output_buffer_size, int output_stride);
+        internal delegate IntPtr WebPINewRGB(Colorspace colorspace, IntPtr output_buffer, UIntPtr output_buffer_size, int output_stride);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate IntPtr WebPINewYUVA(IntPtr luma, UIntPtr luma_size, int luma_stride,

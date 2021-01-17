@@ -9,14 +9,22 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Test1.png" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\WebPWrapper\WebPWrapper.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="libraries\COPYING">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="libraries\libwebp-x64.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="libraries\libwebp-x86.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Test1.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Test_lossless.webp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

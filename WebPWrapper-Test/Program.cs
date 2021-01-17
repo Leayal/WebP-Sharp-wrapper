@@ -7,6 +7,10 @@ namespace WebPWrapper_Test
     {
         static void Main(string[] args)
         {
+            using (var test = new Test_BufferEncode())
+            {
+                test.Run(args);
+            }
             using (var test = new Test_ProgressiveDecode())
             {
                 test.Run(args);

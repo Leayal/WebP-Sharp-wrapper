@@ -9,13 +9,13 @@ namespace WebPWrapper.WPF
 {
     public class Webp : IDisposable
     {
-        private ILibwebp library;
+        private WebpFactory webp;
         private bool disposed;
 
         public Webp(string libraryPath)
         {
             this.disposed = false;
-            this.library = Libwebp.Init(libraryPath);
+            this.webp = new WebpFactory(libraryPath);
         }
 
         /// <summary>aaaaa</summary>
@@ -41,7 +41,7 @@ namespace WebPWrapper.WPF
             if (this.disposed) return;
             this.disposed = true;
 
-            Libwebp.Deinit(this.library);
+            this.webp.Dispose();
         }
     }
 }

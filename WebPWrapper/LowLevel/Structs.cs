@@ -535,7 +535,7 @@ namespace WebPWrapper.LowLevel
     public struct WebPDecBuffer
     {
         /// <summary>Colorspace.</summary>
-        public WEBP_CSP_MODE colorspace;
+        public Colorspace colorspace;
         /// <summary>Width of image.</summary>
         public int width;
         /// <summary>Height of image.</summary>
@@ -562,7 +562,7 @@ namespace WebPWrapper.LowLevel
     public readonly struct WebPDecodedDataBuffer
     {
         /// <summary>Colorspace.</summary>
-        public readonly WEBP_CSP_MODE colorspace;
+        public readonly Colorspace colorspace;
         /// <summary>Width of image.</summary>
         public readonly int width;
         /// <summary>Height of image.</summary>

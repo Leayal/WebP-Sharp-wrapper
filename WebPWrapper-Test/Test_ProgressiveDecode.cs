@@ -18,7 +18,7 @@ namespace WebPWrapper_Test
 
         public Test_ProgressiveDecode()
         {
-            this.webp = new WebpFactory("libwebp.dll");
+            this.webp = new WebpFactory(Path.Combine("libraries", Environment.Is64BitProcess ? "libwebp-x64.dll" : "libwebp-x86.dll"));
         }
 
         public void Run(string[] args)
@@ -39,7 +39,7 @@ namespace WebPWrapper_Test
                     using (var fs = File.OpenRead(filename))
                     {
                         // Test using internal preallocated buffer by decoder.
-                        using (var decoder = this.webp.CreateDecoderForRGBX(WEBP_CSP_MODE.MODE_bgrA))
+                        using (var decoder = this.webp.CreateDecoderForRGBX(Colorspace.MODE_bgrA))
                         {
                             var readbyte = fs.Read(buffer);
                             var status = VP8StatusCode.VP8_STATUS_NOT_ENOUGH_DATA;
@@ -88,7 +88,7 @@ namespace WebPWrapper_Test
                                 VP8StatusCode status;
                                 try
                                 {
-                                    decBuffer.colorspace = WEBP_CSP_MODE.MODE_bgrA;
+                                    decBuffer.colorspace = Colorspace.MODE_bgrA;
                                     decBuffer.is_external_memory = 1;
                                     decBuffer.u.RGBA.rgba = lockedBm.Scan0;
                                     decBuffer.u.RGBA.stride = lockedBm.Stride;
