@@ -5,5 +5,7 @@
 
 Or you can dynamically set the library path when init a new WebP instance.
 
+### [Compiled native WebP library for Windows](WebPWrapper-Test/libraries)
+
 ## Thanks to jzern@google.com and [JosePineiro's repo](https://github.com/JosePineiro/WebP-wrapper)
 Without their help this wapper would not have been possible.
