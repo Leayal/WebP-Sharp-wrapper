@@ -5,7 +5,7 @@ namespace WebPWrapper
 {
     /// <summary>Options for WebP encoder</summary>
     /// <remarks>Just a convenient class. You still need to call <seealso cref="ApplyOptions(ILibwebp, ref WebPConfig)"/> and use the <seealso cref="WebPConfig"/> structure.</remarks>
-    public sealed class EncoderOptions
+    public class EncoderOptions
     {
         private const int CompressionLevel_Lowest = (int)CompressionLevel.Lowest, CompressionLevel_Highest = (int)CompressionLevel.Highest;
         /// <summary>Init new option instance</summary>

@@ -3,11 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29215.179
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebPWrapper", "WebPWrapper\WebPWrapper.csproj", "{26422BCA-41F9-49BF-8367-034F910065A9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Leayal.WebPWrapper", "WebPWrapper\Leayal.WebPWrapper.csproj", "{26422BCA-41F9-49BF-8367-034F910065A9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebPWrapper-Test", "WebPWrapper-Test\WebPWrapper-Test.csproj", "{8AD3AC57-290B-433C-BD8E-0F3780D781D2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebPWrapper-CoreWPF", "WebPWrapper-CoreWPF\WebPWrapper-CoreWPF.csproj", "{B9CFC760-AD97-4255-9913-CF64772ACE3F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebPWrapper-WPF", "WebPWrapper-WPF\WebPWrapper-WPF.csproj", "{54AF866D-5300-415D-B2DB-34BA0BCD96EE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebPWrapper-WinForm", "WebPWrapper-WinForm\WebPWrapper-WinForm.csproj", "{B29C976B-BD58-42D3-B956-B36E8B1C2181}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +25,14 @@ Global
 		{8AD3AC57-290B-433C-BD8E-0F3780D781D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8AD3AC57-290B-433C-BD8E-0F3780D781D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8AD3AC57-290B-433C-BD8E-0F3780D781D2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B9CFC760-AD97-4255-9913-CF64772ACE3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B9CFC760-AD97-4255-9913-CF64772ACE3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B9CFC760-AD97-4255-9913-CF64772ACE3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B9CFC760-AD97-4255-9913-CF64772ACE3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54AF866D-5300-415D-B2DB-34BA0BCD96EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54AF866D-5300-415D-B2DB-34BA0BCD96EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54AF866D-5300-415D-B2DB-34BA0BCD96EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54AF866D-5300-415D-B2DB-34BA0BCD96EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B29C976B-BD58-42D3-B956-B36E8B1C2181}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B29C976B-BD58-42D3-B956-B36E8B1C2181}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B29C976B-BD58-42D3-B956-B36E8B1C2181}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B29C976B-BD58-42D3-B956-B36E8B1C2181}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

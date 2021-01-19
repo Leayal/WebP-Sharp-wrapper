@@ -9,9 +9,13 @@ namespace WebPWrapper_Test
         {
             using (var test = new Test_BufferEncode())
             {
-                test.Run(args);
+                // test.Run(args);
             }
             using (var test = new Test_ProgressiveDecode())
+            {
+                // test.Run(args);
+            }
+            using (var test = new Test_WinForm())
             {
                 test.Run(args);
             }

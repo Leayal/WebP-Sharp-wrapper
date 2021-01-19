@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\WebPWrapper\WebPWrapper.csproj" />
+    <ProjectReference Include="..\WebPWrapper-WinForm\WebPWrapper-WinForm.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -85,7 +85,7 @@ namespace WebPWrapper
         /// <param name="input_buffer_size">The size of the input buffer.</param>
         /// <param name="options">The decoder options.</param>
         /// <remarks>In case '<paramref name="input_buffer"/>' is NULL, '<paramref name="input_buffer_size"/>' is ignored</remarks>
-        public WebpImageDecoder CreateDecoder(in IntPtr input_buffer, in UIntPtr input_buffer_size, ref WebPDecoderConfig options)
+        public WebpImageDecoder CreateDecoder(IntPtr input_buffer, UIntPtr input_buffer_size, ref WebPDecoderConfig options)
         {
             this.ThrowIfDisposed();
             return new WebpImageDecoder(this.library, input_buffer, input_buffer_size, ref options);
@@ -141,7 +141,7 @@ namespace WebPWrapper
         /// </summary>
         /// <remarks>
         /// Equivalent to <seealso cref="CreateDecoderForRGBX(Colorspace, IntPtr, UIntPtr, int)"/>, with 'output_buffer' is NULL.
-        /// Use <seealso cref="WebpImageDecoder.GetDecodedImage(out int, out int, out int, out int, out IntPtr)"/> or <seealso cref="WebpImageDecoder.GetDecodedImage(out int, out int, out int, out int, out ReadOnlySpan{byte})"/>
+        /// Use <seealso cref="WebpImageDecoder.GetDecodedImage(ref int, out int, out int, out int, out IntPtr)"/> or <seealso cref="WebpImageDecoder.GetDecodedImage(ref int, out int, out int, out int, out ReadOnlySpan{byte})"/>
         /// to obtain the decoded data.
         /// </remarks>
         /// <exception cref="InvalidProgramException">Unknown error occured.</exception>
@@ -166,6 +166,25 @@ namespace WebPWrapper
 
             // Unnecessary but welp, check for version anyway.
             if (!this.library.WebPInitDecBuffer(ref output_buffer))
+            {
+                throw new BadImageFormatException("Version mismatch.");
+            }
+
+            return output_buffer;
+        }
+
+        /// <summary>Initialize a new empty <see cref="WebPDecoderConfig"/> structure.</summary>
+        /// <exception cref="BadImageFormatException">Version mismatch</exception>
+        /// <remarks>
+        /// Must be called before any other use in case the decoder doesn't initialize one internally.
+        /// </remarks>
+        public WebPDecoderConfig CreateDecoderConfig()
+        {
+            this.ThrowIfDisposed();
+            var output_buffer = new WebPDecoderConfig();
+
+            // Unnecessary but welp, check for version anyway.
+            if (this.library.WebPInitDecoderConfig(ref output_buffer) == 0)
             {
                 throw new BadImageFormatException("Version mismatch.");
             }
@@ -264,6 +283,15 @@ namespace WebPWrapper
         {
             this.ThrowIfDisposed();
             this.library.WebPFreeDecBuffer(ref output_buffer);
+        }
+
+        /// <summary>Free any memory associated with the buffer. Must always be called last.</summary>
+        /// <param name="decoderConfig">The <seealso cref="WebPDecoderConfig"/> to free the associated memory.</param>
+        /// <remarks>External memory will not be touched.</remarks>
+        public void Free(ref WebPDecoderConfig decoderConfig)
+        {
+            this.ThrowIfDisposed();
+            this.library.WebPFreeDecBuffer(ref decoderConfig.output);
         }
         #endregion
 
@@ -377,12 +405,15 @@ namespace WebPWrapper
                 }
 
                 GC.KeepAlive(writer);
-                GC.KeepAlive(webpconfig);
-                GC.KeepAlive(webppic);
             }
             finally
             {
-                outputStream.Flush();
+                // Flush the stream if it supports. It doesn't matter anyway.
+                try
+                {
+                    outputStream.Flush();
+                }
+                catch { }
             }
         }
         #endregion
@@ -393,7 +424,7 @@ namespace WebPWrapper
         /// <param name="imageWidth">The image width from header. (The range is limited currently from 1 to 16383)</param>
         /// <param name="imageHeight">The image height from header. (The range is limited currently from 1 to 16383)</param>
         /// <returns>True if success. Otherwise false, usually failure because of format error?</returns>
-        public bool TryGetImageInfo(in ReadOnlySpan<byte> data, out int imageWidth, out int imageHeight)
+        public bool TryGetImageSize(ReadOnlySpan<byte> data, out int imageWidth, out int imageHeight)
         {
             bool result;
             unsafe
@@ -411,7 +442,7 @@ namespace WebPWrapper
         /// <param name="imageWidth">The image width from header. (The range is limited currently from 1 to 16383)</param>
         /// <param name="imageHeight">The image height from header. (The range is limited currently from 1 to 16383)</param>
         /// <returns>True if success. Otherwise false, usually failure because of format error?</returns>
-        public bool TryGetImageInfo(in ReadOnlyMemory<byte> data, out int imageWidth, out int imageHeight)
+        public bool TryGetImageSize(ReadOnlyMemory<byte> data, out int imageWidth, out int imageHeight)
         {
             bool result;
             using (var pinned = data.Pin())
@@ -427,7 +458,7 @@ namespace WebPWrapper
         /// <summary>Validate the WebP image header</summary>
         /// <param name="data">The WebP image data</param>
         /// <returns>True if success. Otherwise false, usually failure because of format error?</returns>
-        public bool ValidateImageHeader(in ReadOnlySpan<byte> data)
+        public bool ValidateImageHeader(ReadOnlySpan<byte> data)
         {
             bool result;
             unsafe
@@ -443,7 +474,7 @@ namespace WebPWrapper
         /// <summary>Validate the WebP image header</summary>
         /// <param name="data">The WebP image data</param>
         /// <returns>True if success. Otherwise false, usually failure because of format error?</returns>
-        public bool ValidateImageHeader(in ReadOnlyMemory<byte> data)
+        public bool ValidateImageHeader(ReadOnlyMemory<byte> data)
         {
             bool result;
             using (var pinned = data.Pin())
@@ -451,6 +482,40 @@ namespace WebPWrapper
                 unsafe
                 {
                     result = (this.library.WebPGetInfo(new IntPtr(pinned.Pointer), new UIntPtr(Convert.ToUInt32(data.Length))) == 1);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Try get the webp bitstream's feature from data buffer.</summary>
+        /// <param name="data">The buffer contains webp image data.</param>
+        /// <param name="feature">The structure to store the feature values.</param>
+        /// <returns><seealso cref="VP8StatusCode.VP8_STATUS_OK"/> on success. Otherwise the error code.</returns>
+        public VP8StatusCode TryGetImageHeaderInfo(ReadOnlyMemory<byte> data, ref WebPBitstreamFeatures feature)
+        {
+            VP8StatusCode result;
+            using (var pinned = data.Pin())
+            {
+                unsafe
+                {
+                    result = this.library.WebPGetFeatures(new IntPtr(pinned.Pointer), new UIntPtr(Convert.ToUInt32(data.Length)), ref feature);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Try get the webp bitstream's feature from data buffer.</summary>
+        /// <param name="data">The buffer contains webp image data.</param>
+        /// <param name="feature">The structure to store the feature values.</param>
+        /// <returns><seealso cref="VP8StatusCode.VP8_STATUS_OK"/> on success. Otherwise the error code.</returns>
+        public VP8StatusCode TryGetImageHeaderInfo(ReadOnlySpan<byte> data, ref WebPBitstreamFeatures feature)
+        {
+            VP8StatusCode result;
+            unsafe
+            {
+                fixed (byte* b = data)
+                {
+                    result = this.library.WebPGetFeatures(new IntPtr(b), new UIntPtr(Convert.ToUInt32(data.Length)), ref feature);
                 }
             }
             return result;

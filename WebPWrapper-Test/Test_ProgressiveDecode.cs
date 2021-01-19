@@ -52,7 +52,8 @@ namespace WebPWrapper_Test
                                 }
                                 readbyte = fs.Read(buffer);
                             }
-                            if (decoder.GetDecodedImage(out var last_y, out var width, out var height, out var stride, out IntPtr backBuffer) == VP8StatusCode.VP8_STATUS_OK)
+                            int last_y = 0;
+                            if (decoder.GetDecodedImage(ref last_y, out var width, out var height, out var stride, out IntPtr backBuffer) == VP8StatusCode.VP8_STATUS_OK)
                             {
                                 using (var bm = new Bitmap(width, height, stride, System.Drawing.Imaging.PixelFormat.Format32bppPArgb, backBuffer))
                                 {
@@ -72,7 +73,7 @@ namespace WebPWrapper_Test
                         int headerRead = fs.Read(rentedBuffer);
                         if (headerRead != 0)
                         {
-                            if (!this.webp.TryGetImageInfo(new ReadOnlySpan<byte>(rentedBuffer, 0, headerRead), out imgWidth, out imgHeight))
+                            if (!this.webp.TryGetImageSize(new ReadOnlySpan<byte>(rentedBuffer, 0, headerRead), out imgWidth, out imgHeight))
                             {
                                 // Error!!!
                                 continue;

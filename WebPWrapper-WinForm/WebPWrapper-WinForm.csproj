@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+	  <TargetFrameworks>net472;net48;netcoreapp3.1;net5.0-windows</TargetFrameworks>
+	<UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>WebPWrapper.WinForms</RootNamespace>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<AssemblyName>Leayal.WebPWrapper.WinForm</AssemblyName>
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	  <Authors>Dramiel Leayal</Authors>
+	  <Description>WebPWrapper for .NET (WinForms)</Description>
+	  <PackageProjectUrl>https://github.com/Leayal/WebP-Sharp-wrapper</PackageProjectUrl>
+	  <PackageTags>imaging codec webp winforms-core</PackageTags>
+	  <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+	  <PackageIcon>project-icon.png</PackageIcon>
+	  <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+	  <PackageReleaseNotes>(You still need the native library of WebP codec)</PackageReleaseNotes>
+	  <Version>1.0.1</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebPWrapper\Leayal.WebPWrapper.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\project-icon.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>

@@ -14,7 +14,7 @@ namespace WebPWrapper
         /// </summary>
         /// <remarks>
         /// Equivalent to <seealso cref="CreateDecoderForRGBX(ILibwebp, Colorspace, IntPtr, UIntPtr, int)"/>, with 'output_buffer' is NULL.
-        /// Use <seealso cref="GetDecodedImage(out int, out int, out int, out int, out IntPtr)"/> or <seealso cref="GetDecodedImage(out int, out int, out int, out int, out ReadOnlySpan{byte})"/>
+        /// Use <seealso cref="GetDecodedImage(ref int, out int, out int, out int, out IntPtr)"/> or <seealso cref="GetDecodedImage(ref int, out int, out int, out int, out ReadOnlySpan{byte})"/>
         /// to obtain the decoded data.
         /// </remarks>
         /// <exception cref="InvalidProgramException">Unknown error occured.</exception>
@@ -187,7 +187,7 @@ namespace WebPWrapper
         /// the image is successfully decoded. Returns <see cref="VP8StatusCode.VP8_STATUS_SUSPENDED"/> when more
         /// data is expected. Returns error in other cases.
         /// </returns>
-        public VP8StatusCode AppendEncodedData(in ReadOnlySpan<byte> data)
+        public VP8StatusCode AppendEncodedData(ReadOnlySpan<byte> data)
         {
             this.ThrowIfDisposed();
 
@@ -210,7 +210,7 @@ namespace WebPWrapper
         /// the image is successfully decoded. Returns <see cref="VP8StatusCode.VP8_STATUS_SUSPENDED"/> when more
         /// data is expected. Returns error in other cases.
         /// </returns>
-        public VP8StatusCode AppendEncodedData(in ReadOnlyMemory<byte> data)
+        public VP8StatusCode AppendEncodedData(ReadOnlyMemory<byte> data)
         {
             this.ThrowIfDisposed();
 
@@ -236,7 +236,7 @@ namespace WebPWrapper
         /// the image is successfully decoded. Returns <see cref="VP8StatusCode.VP8_STATUS_SUSPENDED"/> when more
         /// data is expected. Returns error in other cases.
         /// </returns>
-        public VP8StatusCode UpdateEncodedData(in IntPtr data, in int data_size)
+        public VP8StatusCode UpdateEncodedData(IntPtr data, int data_size)
         {
             this.ThrowIfDisposed();
 
@@ -253,14 +253,14 @@ namespace WebPWrapper
         /// the image is successfully decoded. Returns <see cref="VP8StatusCode.VP8_STATUS_SUSPENDED"/> when more
         /// data is expected. Returns error in other cases.
         /// </returns>
-        public VP8StatusCode UpdateEncodedData(in MemoryHandle data, in int data_size)
+        public VP8StatusCode UpdateEncodedData(MemoryHandle data, int data_size)
         {
             IntPtr pointer;
             unsafe
             {
                 pointer = new IntPtr(data.Pointer);
             }
-            return this.UpdateEncodedData(in pointer, in data_size);
+            return this.UpdateEncodedData(pointer, data_size);
         }
 
         /// <summary>Gets the RGB/A of the whole decoded image.</summary>
@@ -273,15 +273,14 @@ namespace WebPWrapper
         /// Returns <seealso cref="VP8StatusCode.VP8_STATUS_OK"/> if successful.
         /// Otherwise <seealso cref="VP8StatusCode.VP8_STATUS_NOT_ENOUGH_DATA"/> in case the decode doesn't have enough data to decode.
         /// </returns>
-        public VP8StatusCode GetDecodedImage(out int last_y, out int width, out int height, out int stride, out ReadOnlySpan<byte> buffer)
+        public VP8StatusCode GetDecodedImage(ref int last_y, out int width, out int height, out int stride, out ReadOnlySpan<byte> buffer)
         {
             this.ThrowIfDisposed();
 
-            int _last_y = 0, _width = 0, _height = 0, _stride = 0;
-            var ptr = this.iwebp.WebPIDecGetRGB(this.decoder, ref _last_y, ref _width, ref _height, ref _stride);
+            int _width = 0, _height = 0, _stride = 0;
+            var ptr = this.iwebp.WebPIDecGetRGB(this.decoder, ref last_y, ref _width, ref _height, ref _stride);
             if (ptr == IntPtr.Zero)
             {
-                last_y = 0;
                 width = 0;
                 height = 0;
                 stride = 0;
@@ -290,7 +289,6 @@ namespace WebPWrapper
             }
             else
             {
-                last_y = _last_y;
                 width = _width;
                 height = _height;
                 stride = _stride;
@@ -312,12 +310,12 @@ namespace WebPWrapper
         /// Returns <seealso cref="VP8StatusCode.VP8_STATUS_OK"/> if successful.
         /// Otherwise <seealso cref="VP8StatusCode.VP8_STATUS_NOT_ENOUGH_DATA"/> in case the decode doesn't have enough data to decode.
         /// </returns>
-        public VP8StatusCode GetDecodedImage(out int last_y, out int width, out int height, out int stride, out IntPtr backBufferPointer)
+        public VP8StatusCode GetDecodedImage(ref int last_y, out int width, out int height, out int stride, out IntPtr backBufferPointer)
         {
             this.ThrowIfDisposed();
 
-            int _last_y = 0, _width = 0, _height = 0, _stride = 0;
-            var ptr = this.iwebp.WebPIDecGetRGB(this.decoder, ref _last_y, ref _width, ref _height, ref _stride);
+            int _width = 0, _height = 0, _stride = 0;
+            var ptr = this.iwebp.WebPIDecGetRGB(this.decoder, ref last_y, ref _width, ref _height, ref _stride);
             if (ptr == IntPtr.Zero)
             {
                 last_y = 0;
@@ -329,7 +327,6 @@ namespace WebPWrapper
             }
             else
             {
-                last_y = _last_y;
                 width = _width;
                 height = _height;
                 stride = _stride;

@@ -6,7 +6,7 @@ namespace WebPWrapper
 {
     /// <summary>WebP Decoding options</summary>
     /// <remarks>Just a convenient class. You still need to call <seealso cref="ApplyOptions(ref WebPDecoderConfig)"/> and use the <seealso cref="WebPDecoderConfig"/> structure.</remarks>
-    public sealed class DecoderOptions
+    public class DecoderOptions
     {
         internal static readonly DecoderOptions Default = new DecoderOptions();
         /// <summary>
@@ -14,7 +14,7 @@ namespace WebPWrapper
         /// </summary>
         public DecoderOptions()
         {
-            this._alpha_dithering_strength = 0;
+            this._alpha_dithering_strength = 100;
             this._dithering_strength = 100;
         }
 
@@ -117,9 +117,9 @@ namespace WebPWrapper
             scaled_width = (isScaling ? this._scale.PixelWidth : 0),
             scaled_height = (isScaling ? this._scale.PixelHeight : 0)
             */
-            if (HasScaling)
+            if (this.HasScaling)
             {
-                config.options.use_scaling = 1;
+                options.use_scaling = 1;
                 Helper.ScaleHelper.GetScaledWidthAndHeight(this.ScaleSize, config.input.width, config.input.height, out options.scaled_width, out options.scaled_height);
             }
             else

@@ -58,8 +58,7 @@ namespace WebPWrapper_Test
                             {
                                 using (var outputFileStream = new WrapperStream(Path.ChangeExtension(filename, ".webp")))
                                 {
-                                    // Despite the "PixelFormat.Format32bppArgb" is given, it's actually BGRA for Little Endian machines (flipped ARGB -> BGRA).
-                                    webp.EncodeRGB(lockedData.Scan0, lockedData.Width, lockedData.Height, lockedData.Stride, isBGR: BitConverter.IsLittleEndian, outputFileStream, opts);
+                                    webp.EncodeRGB(lockedData.Scan0, lockedData.Width, lockedData.Height, lockedData.Stride, true, outputFileStream, opts);
                                 }
                             }
                             finally
