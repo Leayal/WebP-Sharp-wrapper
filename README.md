@@ -3,7 +3,11 @@
 # WebP-Sharp-wrapper
 `libwebp` native library wrapper for .NET.
 
-Or you can dynamically set the library path when init a new WebP instance.
+### Packages
+| Base library | WPF | Windows Forms |
+| :---: | :---: | :---: |
+| [NuGet](https://www.nuget.org/packages/Leayal.WebPWrapper/) | [NuGet](https://www.nuget.org/packages/Leayal.WebPWrapper.WPF/) | [NuGet](https://www.nuget.org/packages/Leayal.WebPWrapper.WinForm/) |
+| Main wrapper to deal with P/Invoke | Provides managed API on top of `Base library` for WPF  | Provides managed API on top of `Base library` for Windows Forms |
 
 ### [Compiled native WebP library for Windows](WebPWrapper-Test/libraries)
 
