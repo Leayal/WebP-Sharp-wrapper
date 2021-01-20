@@ -13,6 +13,9 @@ namespace WebPWrapper.WPF
     /// <summary>Simple webp wrapper for WPF.</summary>
     public class Webp : IDisposable
     {
+        private static readonly byte[] WEBP_CONTAINER_HEADER_1 = System.Text.Encoding.ASCII.GetBytes("RIFF"),
+                                       WEBP_CONTAINER_HEADER_2 = System.Text.Encoding.ASCII.GetBytes("WEBP");
+
         private readonly WebpFactory webp;
         private bool disposed;
 
@@ -50,6 +53,73 @@ namespace WebPWrapper.WPF
                 {
                     var mem = new ReadOnlyMemory<byte>(segment.Array, segment.Offset, segment.Count);
                     return this.Decode(mem, options);
+                }
+            }
+
+            bool canEvenSeek = false;
+            try
+            {
+                canEvenSeek = dataStream.CanSeek;
+            }
+            catch (NotSupportedException) { }
+            catch (NotImplementedException) { }
+
+            if (canEvenSeek)
+            {
+                int length;
+                long currentPos = -1;
+                try
+                {
+                    currentPos = dataStream.Position;
+                    // Try get length if it supports.
+                    length = (int)dataStream.Length;
+                }
+                catch (NotSupportedException) { length = -1; }
+                // Length is longer than int.MaxValue
+                catch { length = -2; }
+                if (length != -2)
+                {
+                    // Try to get the webp's data length starting from the current position of the stream (if possible)
+                    var bytes = ArrayPool<byte>.Shared.Rent(4096);
+                    try
+                    {
+                        if (dataStream.Read(bytes, 0, 12) == 12)
+                        {
+                            ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(bytes, 0, 4),
+                                               header = new ReadOnlySpan<byte>(WEBP_CONTAINER_HEADER_1);
+                            if (span.SequenceEqual(header))
+                            {
+                                span = new ReadOnlySpan<byte>(bytes, 8, 4);
+                                header = new ReadOnlySpan<byte>(WEBP_CONTAINER_HEADER_2);
+                                if (span.SequenceEqual(header))
+                                {
+                                    length = BitConverter.ToInt32(bytes, 4) + 8;
+                                    if (length > bytes.Length)
+                                    {
+                                        ArrayPool<byte>.Shared.Return(bytes);
+                                        bytes = ArrayPool<byte>.Shared.Rent(length);
+                                    }
+                                    dataStream.Position = currentPos;
+                                    if (dataStream.Read(bytes, 0, length) == length)
+                                    {
+                                        var mem = new ReadOnlyMemory<byte>(bytes, 0, length);
+                                        return this.Decode(mem, options);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (NotSupportedException)
+                    {
+                        if (currentPos != -1)
+                        {
+                            dataStream.Position = currentPos;
+                        }
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(bytes);
+                    }
                 }
             }
 
