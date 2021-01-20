@@ -12,12 +12,13 @@
 	<Authors>Dramiel Leayal</Authors>
 	<Description>WebPWrapper for .NET (WPF)</Description>
 	<PackageProjectUrl>https://github.com/Leayal/WebP-Sharp-wrapper</PackageProjectUrl>
-	<PackageTags>imaging codec webp wpf-core</PackageTags>
+	<PackageTags>imaging codec webp net-framework net-core wpf</PackageTags>
 	<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
 	<PackageIcon>project-icon.png</PackageIcon>
 	<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	<PackageReleaseNotes>(You still need the native library of WebP codec)</PackageReleaseNotes>
-	<Version>1.0.1</Version>
+	<Version>1.0.2</Version>
+	  <DefineConstants>WPF</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

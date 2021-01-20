@@ -13,26 +13,27 @@ namespace WebPWrapper.WinForms
     /// <summary>Simple webp wrapper for Windows Forms.</summary>
     public class Webp : IDisposable
     {
-        private WebpFactory webp;
+        private readonly WebpFactory webp;
         private bool disposed;
 
-        /// <summary>
-        /// Initialize a new <see cref="Webp"/> instance with the given library path.
-        /// </summary>
+        /// <summary>Initialize a new <see cref="Webp"/> instance with the given library path.</summary>
         /// <param name="libraryPath">The file path to the native webp library.</param>
-        public Webp(string libraryPath)
+        public Webp(string libraryPath) : this(new WebpFactory(libraryPath)) { }
+
+        /// <summary>Initialize a new <see cref="Webp"/> instance with the given <seealso cref="WebpFactory"/>.</summary>
+        public Webp(WebpFactory factory)
         {
             this.disposed = false;
-            this.webp = new WebpFactory(libraryPath);
+            this.webp = factory;
         }
 
         /// <summary>Decodes Webp data stream to <seealso cref="Bitmap"/>.</summary>
         /// <param name="dataStream">The data stream which contains WebP image.</param>
         /// <param name="options">The decoder options for webp decoder.</param>
         /// <returns><seealso cref="Bitmap"/> which contains the image data.</returns>
-        /// <remarks>Incomplete API. Therefore, in case when decoder is progressive, only <seealso cref="WinFormsDecoderOptions.OptimizeForRendering"/> will be used, all other options will be ignored.</remarks>
+        /// <remarks>Incomplete API. Therefore, in case when decoder is progressive, only <seealso cref="WindowsDecoderOptions.PixelFormat"/> will be used, all other options will be ignored.</remarks>
         /// <exception cref="WebpDecodeException">Thrown when the decoder has wrong options or the stream contains invalid data for Webp Image.</exception>
-        public Bitmap Decode(Stream dataStream, WinFormsDecoderOptions options)
+        public Bitmap Decode(Stream dataStream, WindowsDecoderOptions options)
         {
             if (dataStream == null)
             {
@@ -59,17 +60,21 @@ namespace WebPWrapper.WinForms
                 int streamRead = dataStream.Read(currentBuffer, 0, currentBuffer.Length);
                 if (streamRead > 0)
                 {
-                    if (this.webp.TryGetImageSize(new ReadOnlyMemory<byte>(currentBuffer), out var width, out var height))
+                    var bitstreaminfo = new WebPBitstreamFeatures();
+                    if (this.webp.TryGetImageHeaderInfo(memBuffer.Slice(0, streamRead), ref bitstreaminfo) == VP8StatusCode.VP8_STATUS_OK)
                     {
+                        var width = bitstreaminfo.width;
+                        var height = bitstreaminfo.height;
+                        var decidedPxFmt = Helper.DecideOutputPixelFormat(options.PixelFormat, bitstreaminfo.has_alpha != 0);
                         var decodedBuffer = this.webp.CreateDecodeBuffer();
-                        decodedBuffer.colorspace = options.OptimizeForRendering ? Colorspace.MODE_bgrA : Colorspace.MODE_BGRA;
+                        decodedBuffer.colorspace = Helper.GetWebpPixelFormat(decidedPxFmt);
                         decodedBuffer.is_external_memory = 1;
                         decodedBuffer.width = width;
                         decodedBuffer.height = height;
 
-                        var pixelFmt = options.OptimizeForRendering ? PixelFormat.Format32bppPArgb : PixelFormat.Format32bppArgb;
+                        var pixelFmt = Helper.GetPixelFormat(decidedPxFmt);
                         var result = new Bitmap(width, height, pixelFmt);
-                        var lockedData = result.LockBits(new Rectangle(0, 0, result.Width, result.Height), ImageLockMode.ReadWrite, pixelFmt);
+                        var lockedData = result.LockBits(new Rectangle(0, 0, result.Width, result.Height), ImageLockMode.WriteOnly, pixelFmt);
                         try
                         { 
                             decodedBuffer.u.RGBA.rgba = lockedData.Scan0;
@@ -77,11 +82,15 @@ namespace WebPWrapper.WinForms
                             decodedBuffer.u.RGBA.stride = lockedData.Stride;
                             using (var decoder = this.webp.CreateDecoder(ref decodedBuffer))
                             {
+                                int last_scanline_index = 0;
                                 VP8StatusCode status = VP8StatusCode.VP8_STATUS_NOT_ENOUGH_DATA;
                                 while (streamRead != 0)
                                 {
                                     status = decoder.AppendEncodedData(memBuffer.Slice(0, streamRead));
-                                    // if (decoder.GetDecodedImage(out last_scanline_index, out var width, out var height, out var stride, out IntPtr pointer) == VP8StatusCode.VP8_STATUS_OK) { }
+                                    if (decoder.GetDecodedImage(ref last_scanline_index, out var decodedwidth, out var decodedheight, out var stride, out IntPtr pointer) == VP8StatusCode.VP8_STATUS_OK)
+                                    {
+
+                                    }
                                     if (status != VP8StatusCode.VP8_STATUS_SUSPENDED)
                                     {
                                         break;
@@ -113,14 +122,14 @@ namespace WebPWrapper.WinForms
                     }
                     else
                     {
-                        using (var decoder = this.webp.CreateDecoderForRGBX(options.OptimizeForRendering ? Colorspace.MODE_bgrA : Colorspace.MODE_BGRA))
+                        var decidedPxFmt = Helper.DecideOutputPixelFormat(options.PixelFormat, null);
+                        using (var decoder = this.webp.CreateDecoderForRGBX(Helper.GetWebpPixelFormat(decidedPxFmt)))
                         {
                             int last_scanline_index = 0;
                             VP8StatusCode status = VP8StatusCode.VP8_STATUS_NOT_ENOUGH_DATA;
                             while (streamRead != 0)
                             {
                                 status = decoder.AppendEncodedData(memBuffer.Slice(0, streamRead));
-                                // if (decoder.GetDecodedImage(out last_scanline_index, out var width, out var height, out var stride, out IntPtr pointer) == VP8StatusCode.VP8_STATUS_OK) { }
                                 if (status != VP8StatusCode.VP8_STATUS_SUSPENDED)
                                 {
                                     break;
@@ -129,10 +138,10 @@ namespace WebPWrapper.WinForms
                             }
                             if (status == VP8StatusCode.VP8_STATUS_OK)
                             {
-                                status = decoder.GetDecodedImage(ref last_scanline_index, out width, out height, out var stride, out IntPtr pointer);
+                                status = decoder.GetDecodedImage(ref last_scanline_index, out var width, out var height, out var stride, out IntPtr pointer);
                                 if (status == VP8StatusCode.VP8_STATUS_OK)
                                 {
-                                    var pixelFmt = options.OptimizeForRendering ? PixelFormat.Format32bppPArgb : PixelFormat.Format32bppArgb;
+                                    var pixelFmt = Helper.GetPixelFormat(decidedPxFmt);
                                     var result = new Bitmap(width, height, pixelFmt);
                                     var lockedData = result.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, pixelFmt);
                                     try
@@ -182,7 +191,7 @@ namespace WebPWrapper.WinForms
         /// <param name="options">The decoder options for webp decoder.</param>
         /// <returns><seealso cref="Bitmap"/> which contains the image data.</returns>
         /// <exception cref="WebpDecodeException">Thrown when the decoder has wrong options or the buffer contains invalid data for Webp Image.</exception>
-        public Bitmap Decode(ReadOnlySpan<byte> data, WinFormsDecoderOptions options)
+        public Bitmap Decode(ReadOnlySpan<byte> data, WindowsDecoderOptions options)
         {
             unsafe
             {
@@ -198,7 +207,7 @@ namespace WebPWrapper.WinForms
         /// <param name="options">The decoder options for webp decoder.</param>
         /// <returns><seealso cref="Bitmap"/> which contains the image data.</returns>
         /// <exception cref="WebpDecodeException">Thrown when the decoder has wrong options or the buffer contains invalid data for Webp Image.</exception>
-        public Bitmap Decode(ReadOnlyMemory<byte> data, WinFormsDecoderOptions options)
+        public Bitmap Decode(ReadOnlyMemory<byte> data, WindowsDecoderOptions options)
         {
             using (var pinned = data.Pin())
             {
@@ -217,23 +226,27 @@ namespace WebPWrapper.WinForms
         /// <param name="options">The decoder options for webp decoder.</param>
         /// <returns><seealso cref="Bitmap"/> which contains the image data.</returns>
         /// <exception cref="WebpDecodeException">Thrown when the decoder has wrong options or the buffer contains invalid data for Webp Image.</exception>
-        public Bitmap Decode(IntPtr data, int data_size, WinFormsDecoderOptions options)
+        public Bitmap Decode(IntPtr data, int data_size, WindowsDecoderOptions options)
         {
             ReadOnlySpan<byte> buffer;
             unsafe
             {
                 buffer = new ReadOnlySpan<byte>(data.ToPointer(), data_size);
             }
-            if (this.webp.TryGetImageSize(buffer, out var width, out var height))
+            var bitstreaminfo = new WebPBitstreamFeatures();
+            if (this.webp.TryGetImageHeaderInfo(buffer, ref bitstreaminfo) == VP8StatusCode.VP8_STATUS_OK)
             {
-                var pixelFormat = options.OptimizeForRendering ? PixelFormat.Format32bppPArgb : PixelFormat.Format32bppArgb;
+                var width = bitstreaminfo.width;
+                var height = bitstreaminfo.height;
+                var decidedPxFmt = Helper.DecideOutputPixelFormat(options.PixelFormat, bitstreaminfo.has_alpha != 0);
+                var pixelFormat = Helper.GetPixelFormat(decidedPxFmt);
                 var bm = new Bitmap(width, height, pixelFormat);
                 var lockedData = bm.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, pixelFormat);
                 try
                 {
                     uint inputSize = Convert.ToUInt32(data_size),
                         outputSize = Convert.ToUInt32(lockedData.Stride * height);
-                    this.webp.DecodeRGB(data, new UIntPtr(inputSize), lockedData.Scan0, new UIntPtr(outputSize), options.OptimizeForRendering ? Colorspace.MODE_bgrA : Colorspace.MODE_BGRA, options);
+                    this.webp.DecodeRGB(data, new UIntPtr(inputSize), lockedData.Scan0, new UIntPtr(outputSize), Helper.GetWebpPixelFormat(decidedPxFmt), options);
                 }
                 catch
                 {

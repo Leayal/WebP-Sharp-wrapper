@@ -2,7 +2,7 @@
 using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Text;
-using WebPWrapper.Helper;
+using WebPWrapper.Internal;
 
 namespace WebPWrapper
 {

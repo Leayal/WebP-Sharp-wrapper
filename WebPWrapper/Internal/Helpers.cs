@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace WebPWrapper.Helper
+namespace WebPWrapper.Internal
 {
     static class RuntimeValue
     {

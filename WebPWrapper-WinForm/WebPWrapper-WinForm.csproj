@@ -11,13 +11,21 @@
 	  <Authors>Dramiel Leayal</Authors>
 	  <Description>WebPWrapper for .NET (WinForms)</Description>
 	  <PackageProjectUrl>https://github.com/Leayal/WebP-Sharp-wrapper</PackageProjectUrl>
-	  <PackageTags>imaging codec webp winforms-core</PackageTags>
+	  <PackageTags>imaging codec webp net-framework net-core winforms</PackageTags>
 	  <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
 	  <PackageIcon>project-icon.png</PackageIcon>
 	  <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	  <PackageReleaseNotes>(You still need the native library of WebP codec)</PackageReleaseNotes>
-	  <Version>1.0.1</Version>
+	  <Version>1.0.2</Version>
+	  <DefineConstants>WINFORMS</DefineConstants>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\WebPWrapper-WPF\Enums.cs" Link="Enums.cs" />
+    <Compile Include="..\WebPWrapper-WPF\Helper.cs" Link="Helper.cs" />
+    <Compile Include="..\WebPWrapper-WPF\OutputStream.cs" Link="OutputStream.cs" />
+    <Compile Include="..\WebPWrapper-WPF\WindowsDecoderOptions.cs" Link="WindowsDecoderOptions.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\WebPWrapper\Leayal.WebPWrapper.csproj" />

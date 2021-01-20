@@ -203,7 +203,7 @@ namespace WebPWrapper
         /// <exception cref="WebpDecodeException">Error occured during decoding operation in the native library. Check the <seealso cref="WebpDecodeException.ErrorCode"/> to see the error.</exception>
         public void DecodeRGB(IntPtr input_buffer, UIntPtr input_buffer_size, IntPtr output_buffer, UIntPtr output_buffer_size, Colorspace output_colorspace, DecoderOptions options)
         {
-            int bbp;
+            int bpp;
             switch (output_colorspace)
             {
                 case Colorspace.MODE_ARGB:
@@ -212,11 +212,11 @@ namespace WebPWrapper
                 case Colorspace.MODE_bgrA:
                 case Colorspace.MODE_RGBA:
                 case Colorspace.MODE_rgbA:
-                    bbp = 4;
+                    bpp = 4;
                     break;
                 case Colorspace.MODE_RGB:
                 case Colorspace.MODE_BGR:
-                    bbp = 3;
+                    bpp = 3;
                     break;
                 case Colorspace.MODE_LAST:
                     throw new ArgumentException(nameof(output_colorspace));
@@ -262,7 +262,14 @@ namespace WebPWrapper
 
                 decodeConf.output.u.RGBA.rgba = output_buffer;
                 decodeConf.output.u.RGBA.size = output_buffer_size;
-                decodeConf.output.u.RGBA.stride = width * bbp;
+                if (bpp == 4)
+                {
+                    decodeConf.output.u.RGBA.stride = width * 4;
+                }
+                else
+                {
+                    decodeConf.output.u.RGBA.stride = (width * bpp) + (width % 4);
+                }
 
                 errorCode = this.library.WebPDecode(input_buffer, input_buffer_size, ref decodeConf);
                 if (errorCode != VP8StatusCode.VP8_STATUS_OK)

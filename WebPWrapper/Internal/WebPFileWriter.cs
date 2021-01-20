@@ -3,12 +3,11 @@ using System.IO;
 using System.Runtime.InteropServices;
 using WebPWrapper.LowLevel;
 
-namespace WebPWrapper.Helper
+namespace WebPWrapper.Internal
 {
-    /// <summary>
-    /// Use old-school buffering enqueue system
-    /// </summary>
-    internal class WebPFileWriter : IDisposable
+    /// <summary>Use old-school buffering enqueue system</summary>
+    /// <remarks>Mistake of the past?</remarks>
+    class WebPFileWriter : IDisposable
     {
         private readonly FileStream fs;
         private bool _preallocateOnDisk;

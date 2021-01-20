@@ -1,7 +1,7 @@
 ﻿using Microsoft.Win32.SafeHandles;
 using System.Security.Permissions;
 
-namespace WebPWrapper.Helper
+namespace WebPWrapper.Internal
 {
     [SecurityPermission(SecurityAction.LinkDemand, UnmanagedCode = true)]
     abstract class SafeLibraryHandle : SafeHandleZeroOrMinusOneIsInvalid

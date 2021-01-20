@@ -120,7 +120,7 @@ namespace WebPWrapper
             if (this.HasScaling)
             {
                 options.use_scaling = 1;
-                Helper.ScaleHelper.GetScaledWidthAndHeight(this.ScaleSize, config.input.width, config.input.height, out options.scaled_width, out options.scaled_height);
+                Internal.ScaleHelper.GetScaledWidthAndHeight(this.ScaleSize, config.input.width, config.input.height, out options.scaled_width, out options.scaled_height);
             }
             else
             {

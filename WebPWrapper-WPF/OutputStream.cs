@@ -1,7 +1,11 @@
 ﻿using System;
 using System.IO;
 
+#if WPF
 namespace WebPWrapper.WPF
+#else
+namespace WebPWrapper.WinForms
+#endif
 {
     /// <summary>Wrapper class</summary>
     class OutputStream : IOutputStream

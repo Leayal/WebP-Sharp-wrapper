@@ -13,26 +13,27 @@ namespace WebPWrapper.WPF
     /// <summary>Simple webp wrapper for WPF.</summary>
     public class Webp : IDisposable
     {
-        private WebpFactory webp;
+        private readonly WebpFactory webp;
         private bool disposed;
 
-        /// <summary>
-        /// Initialize a new <see cref="Webp"/> instance with the given library path.
-        /// </summary>
+        /// <summary>Initialize a new <see cref="Webp"/> instance with the given library path.</summary>
         /// <param name="libraryPath">The file path to the native webp library.</param>
-        public Webp(string libraryPath)
+        public Webp(string libraryPath) : this(new WebpFactory(libraryPath)) { }
+
+        /// <summary>Initialize a new <see cref="Webp"/> instance with the given <seealso cref="WebpFactory"/>.</summary>
+        public Webp(WebpFactory factory)
         {
             this.disposed = false;
-            this.webp = new WebpFactory(libraryPath);
+            this.webp = factory;
         }
 
         /// <summary>Decodes Webp data stream to <seealso cref="BitmapSource"/>.</summary>
         /// <param name="dataStream">The data stream which contains WebP image.</param>
         /// <param name="options">The decoder options for webp decoder.</param>
         /// <returns><seealso cref="BitmapSource"/> which contains the image data.</returns>
-        /// <remarks>Incomplete API. Therefore, in case when decoder is progressive, only <seealso cref="WPFDecoderOptions.OptimizeForRendering"/> will be used, all other options will be ignored.</remarks>
+        /// <remarks>Incomplete API. Therefore, in case when decoder is progressive, only <seealso cref="WindowsDecoderOptions.PixelFormat"/> will be used, all other options will be ignored.</remarks>
         /// <exception cref="WebpDecodeException">Thrown when the decoder has wrong options or the stream contains invalid data for Webp Image.</exception>
-        public BitmapSource Decode(Stream dataStream, WPFDecoderOptions options)
+        public BitmapSource Decode(Stream dataStream, WindowsDecoderOptions options)
         {
             if (dataStream == null)
             {
@@ -59,15 +60,18 @@ namespace WebPWrapper.WPF
                 int streamRead = dataStream.Read(currentBuffer, 0, currentBuffer.Length);
                 if (streamRead > 0)
                 {
-                    if (this.webp.TryGetImageSize(new ReadOnlyMemory<byte>(currentBuffer), out var width, out var height))
+                    var features = new WebPBitstreamFeatures();
+                    if (this.webp.TryGetImageHeaderInfo(new ReadOnlyMemory<byte>(currentBuffer), ref features) == VP8StatusCode.VP8_STATUS_OK)
                     {
+                        int width = features.width, height = features.height;
                         var decodedBuffer = this.webp.CreateDecodeBuffer();
-                        decodedBuffer.colorspace = options.OptimizeForRendering ? Colorspace.MODE_bgrA : Colorspace.MODE_BGRA;
+                        var decidedPxFmt = Helper.DecideOutputPixelFormat(options.PixelFormat, features.has_alpha != 0);
+                        decodedBuffer.colorspace = Helper.GetWebpPixelFormat(decidedPxFmt);
                         decodedBuffer.is_external_memory = 1;
                         decodedBuffer.width = width;
                         decodedBuffer.height = height;
 
-                        var pixelFmt = options.OptimizeForRendering ? PixelFormats.Pbgra32 : PixelFormats.Bgra32;
+                        var pixelFmt = Helper.GetPixelFormat(decidedPxFmt);
                         var result = new WriteableBitmap(width, height, 96, 96, pixelFmt, null);
                         result.Lock();
                         try
@@ -107,7 +111,8 @@ namespace WebPWrapper.WPF
                     }
                     else
                     {
-                        using (var decoder = this.webp.CreateDecoderForRGBX(options.OptimizeForRendering ? Colorspace.MODE_bgrA : Colorspace.MODE_BGRA))
+                        var decidedPxFmt = Helper.DecideOutputPixelFormat(options.PixelFormat, null);
+                        using (var decoder = this.webp.CreateDecoderForRGBX(Helper.GetWebpPixelFormat(decidedPxFmt)))
                         {
                             int last_scanline_index = 0;
                             VP8StatusCode status = VP8StatusCode.VP8_STATUS_NOT_ENOUGH_DATA;
@@ -123,11 +128,10 @@ namespace WebPWrapper.WPF
                             }
                             if (status == VP8StatusCode.VP8_STATUS_OK)
                             {
-                                status = decoder.GetDecodedImage(ref last_scanline_index, out width, out height, out var stride, out IntPtr pointer);
+                                status = decoder.GetDecodedImage(ref last_scanline_index, out var width, out var height, out var stride, out IntPtr pointer);
                                 if (status == VP8StatusCode.VP8_STATUS_OK)
                                 {
-                                    var pixelFmt = options.OptimizeForRendering ? PixelFormats.Pbgra32 : PixelFormats.Bgra32;
-                                    var result = new WriteableBitmap(width, height, 96, 96, pixelFmt, null);
+                                    var result = new WriteableBitmap(width, height, 96, 96, Helper.GetPixelFormat(decidedPxFmt), null);
                                     result.Lock();
                                     try
                                     {
@@ -171,7 +175,7 @@ namespace WebPWrapper.WPF
         /// <param name="options">The decoder options for webp decoder.</param>
         /// <returns><seealso cref="BitmapSource"/> which contains the image data.</returns>
         /// <exception cref="WebpDecodeException">Thrown when the decoder has wrong options or the buffer contains invalid data for Webp Image.</exception>
-        public BitmapSource Decode(ReadOnlySpan<byte> data, WPFDecoderOptions options)
+        public BitmapSource Decode(ReadOnlySpan<byte> data, WindowsDecoderOptions options)
         {
             unsafe
             {
@@ -187,7 +191,7 @@ namespace WebPWrapper.WPF
         /// <param name="options">The decoder options for webp decoder.</param>
         /// <returns><seealso cref="BitmapSource"/> which contains the image data.</returns>
         /// <exception cref="WebpDecodeException">Thrown when the decoder has wrong options or the buffer contains invalid data for Webp Image.</exception>
-        public BitmapSource Decode(ReadOnlyMemory<byte> data, WPFDecoderOptions options)
+        public BitmapSource Decode(ReadOnlyMemory<byte> data, WindowsDecoderOptions options)
         {
             using (var pinned = data.Pin())
             {
@@ -206,22 +210,25 @@ namespace WebPWrapper.WPF
         /// <param name="options">The decoder options for webp decoder.</param>
         /// <returns><seealso cref="BitmapSource"/> which contains the image data.</returns>
         /// <exception cref="WebpDecodeException">Thrown when the decoder has wrong options or the buffer contains invalid data for Webp Image.</exception>
-        public BitmapSource Decode(IntPtr data, int data_size, WPFDecoderOptions options)
+        public BitmapSource Decode(IntPtr data, int data_size, WindowsDecoderOptions options)
         {
             ReadOnlySpan<byte> buffer;
             unsafe
             {
                 buffer = new ReadOnlySpan<byte>(data.ToPointer(), data_size);
             }
-            if (this.webp.TryGetImageSize(buffer, out var width, out var height))
+            var features = new WebPBitstreamFeatures();
+            if (this.webp.TryGetImageHeaderInfo(buffer, ref features) == VP8StatusCode.VP8_STATUS_OK)
             {
-                var wbm = new WriteableBitmap(width, height, 96, 96, options.OptimizeForRendering ? PixelFormats.Pbgra32 : PixelFormats.Bgra32, null);
+                var height = features.height;
+                var decidedPxFmt = Helper.DecideOutputPixelFormat(options.PixelFormat, features.has_alpha != 0);
+                var wbm = new WriteableBitmap(features.width, height, 96, 96, Helper.GetPixelFormat(decidedPxFmt), null);
                 wbm.Lock();
                 try
                 {
                     uint inputSize = Convert.ToUInt32(data_size),
                         outputSize = Convert.ToUInt32(wbm.BackBufferStride * height);
-                    this.webp.DecodeRGB(data, new UIntPtr(inputSize), wbm.BackBuffer, new UIntPtr(outputSize), options.OptimizeForRendering ? Colorspace.MODE_bgrA : Colorspace.MODE_BGRA, options);
+                    this.webp.DecodeRGB(data, new UIntPtr(inputSize), wbm.BackBuffer, new UIntPtr(outputSize), Helper.GetWebpPixelFormat(decidedPxFmt), options);
                 }
                 finally
                 {
