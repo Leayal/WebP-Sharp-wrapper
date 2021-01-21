@@ -97,60 +97,112 @@ namespace WebPWrapper.LowLevel
     {
         /// <summary>Lossless encoding (0=lossy(default), 1=lossless).</summary>
         public int lossless;
-        /// <summary>Between 0 (smallest file) and 100 (biggest)</summary>
+
+        /// <summary>Quality factor.</summary>
+        /// <remarks>Between 0 and 100. For lossy, 0 gives the smallest size and 100 the largest. For lossless, this parameter is the amount of effort put into the compression: 0 is the fastest but gives larger files compared to the slowest, but best, 100.</remarks>
         public float quality;
-        /// <summary>Quality/speed trade-off (0=fast, 6=slower-better)</summary>
+
+        /// <summary>Quality/speed trade-off</summary>
+        /// <remarks>Range: [0..6] (0=fast, 6=slower-better)</remarks>
         public int method;
+
         /// <summary>Hint for image type (lossless only for now).</summary>
         public WebPImageHint image_hint;
-        /// <summary>If non-zero, set the desired target size in bytes. Takes precedence over the 'compression' parameter.</summary>
+
+        /// <summary>If non-zero, set the desired target size in bytes.</summary>
+        /// <remarks>Takes precedence over the 'compression' parameter.</remarks>
         public int target_size;
-        /// <summary>If non-zero, specifies the minimal distortion to try to achieve. Takes precedence over target_size.</summary>
+
+        /// <summary>If non-zero, specifies the minimal distortion to try to achieve.</summary>
+        /// <remarks>Takes precedence over <seealso cref="target_size"/>.</remarks>
         public float target_PSNR;
-        /// <summary>Maximum number of segments to use, in [1..4]</summary>
+
+        /// <summary>Maximum number of segments to use.</summary>
+        /// <remarks>Range: [1..4]</remarks>
         public int segments;
-        /// <summary>Spatial Noise Shaping. 0=off, 100=maximum.</summary>
+
+        /// <summary>Spatial Noise Shaping.</summary>
+        /// <remarks>Range: [0..100] (0=off, 100=maximum).</remarks>
         public int sns_strength;
-        /// <summary>Range: [0 = off .. 100 = strongest]</summary>
+
+        /// <summary>Specify the filter strength.</summary>
+        /// <remarks>Range: [0..100] (0=off, 100=strongest).</remarks>
         public int filter_strength;
-        /// <summary>Range: [0 = off .. 7 = least sharp]</summary>
+
+        /// <summary>Specify the filter sharpness strength.</summary>
+        /// <remarks>Range: [0..7] (0=off, 7=least sharp).</remarks>
         public int filter_sharpness;
-        /// <summary>Filtering type: 0 = simple, 1 = strong (only used if filter_strength > 0 or autofilter > 0)</summary>
+
+        /// <summary>Specify the filter type.</summary>
+        /// <remarks>Range: [0..1] (0=simple, 1=strong {only used if filter_strength > 0 or autofilter > 0}).</remarks>
         public int filter_type;
-        /// <summary>Auto adjust filter's strength [0 = off, 1 = on]</summary>
+
+        /// <summary>Auto adjust filter's strength.</summary>
+        /// <remarks>Range: [0..1] (0=off, 1=on).</remarks>
         public int autofilter;
-        /// <summary>Algorithm for encoding the alpha plane (0 = none, 1 = compressed with WebP lossless). Default is 1.</summary>
+
+        /// <summary>Algorithm for encoding the alpha plane.</summary>
+        /// <remarks>Range: [0..1] (0=none, 1=compressed with WebP lossless). Default is 1.</remarks>
         public int alpha_compression;
-        /// <summary>Predictive filtering method for alpha plane. 0: none, 1: fast, 2: best. Default is 1.</summary>
+
+        /// <summary>Predictive filtering method for alpha plane.</summary>
+        /// <remarks>Range: [0..2] (0=none, 1=fast, 2=best). Default is 1.</remarks>
         public int alpha_filtering;
-        /// <summary>Between 0 (smallest size) and 100 (lossless). Default is 100.</summary>
+
+        /// <summary>Quality factor for alpha plane.</summary>
+        /// <remarks>Range: [0..100] (0=smallest size, 100=lossless). Default is 100.</remarks>
         public int alpha_quality;
-        /// <summary>Number of entropy-analysis passes (in [1..10]).</summary>
+
+        /// <summary>Number of entropy-analysis passes.</summary>
+        /// <remarks>Range: [0..10].</remarks>
         public int pass;
-        /// <summary>If true, export the compressed picture back. In-loop filtering is not applied.</summary>
+
+        /// <summary>If non-zero, export the compressed picture back. In-loop filtering is not applied.</summary>
         public int show_compressed;
-        /// <summary>Preprocessing filter (0=none, 1=segment-smooth)</summary>
+
+        /// <summary>Preprocessing filter</summary>
+        /// <remarks>Range: [0..4] (0=none, 1=segment-smooth, 2=pseudo-random dithering).</remarks>
         public int preprocessing;
-        /// <summary>Log2(number of token partitions) in [0..3] Default is set to 0 for easier progressive decoding.</summary>
+
+        /// <summary>A log2 of the number of token partitions.</summary>
+        /// <remarks>Range: [0..3]. Default is set to 0 for easier progressive decoding.</remarks>
         public int partitions;
-        /// <summary>Quality degradation allowed to fit the 512k limit on prediction modes coding (0: no degradation, 100: maximum possible degradation).</summary>
+
+        /// <summary>Quality degradation allowed to fit the 512k limit on prediction modes coding.</summary>
+        /// <remarks>Range: [0..100] (0=no degradation, 100=maximum possible degradation).</remarks>
         public int partition_limit;
-        /// <summary>If true, compression parameters will be remapped to better match the expected output size from JPEG compression. Generally, the output size will be similar but the degradation will be lower.</summary>
+
+        /// <summary>If non-zero, compression parameters will be remapped to better match the expected output size from JPEG compression.</summary>
+        /// <remarks>Generally, the output size will be similar but the degradation will be lower.</remarks>
         public int emulate_jpeg_size;
+
         /// <summary>If non-zero, try and use multi-threaded encoding.</summary>
+        /// <remarks>Range: [0..1] (0=no multi-threaded, 1=use multi-threaded if possible).</remarks>
         public int thread_level;
-        /// <summary>If set, reduce memory usage (but increase CPU use).</summary>
+
+        /// <summary>If non-zero, reduce memory usage (but increase CPU use).</summary>
+        /// <remarks>Range: [0..1] (0=off, 1=on).</remarks>
         public int low_memory;
-        /// <summary>Near lossless encoding [0 = off(default) .. 100]. This feature is experimental.</summary>
+
+        /// <summary>Quality factor for [Near lossless] encoding. Requires <seealso cref="lossless"/> is set to 1.</summary>
+        /// <remarks>Range: [0..100] (0=max loss, 100=off {lossless mode}). Default is 100.</remarks>
         public int near_lossless;
-        /// <summary>If non-zero, preserve the exact RGB values under transparent area. Otherwise, discard this invisible RGB information for better compression. The default value is 0.</summary>
+
+        /// <summary>If non-zero, preserve the exact RGB values under transparent area. Otherwise, discard this invisible RGB information for better compression.</summary>
+        /// <remarks>Default value is 0.</remarks>
         public int exact;
-        /// <summary>Reserved for future lossless feature</summary>
-        public int delta_palettization;
-        /// <summary>Padding for later use.</summary>
-        private int pad1;
-        /// <summary>Padding for later use.</summary>
-        private int pad2;
+
+        /// <summary>Reserved for future lossless feature.</summary>
+        private int use_delta_palette; // private for now since it's not being actually used.
+
+        /// <summary>If needed, use sharp (and slow) RGB->YUV conversion</summary>
+        public int use_sharp_yuv;
+
+        /// <summary>Minimum permissible quality factor.</summary>
+        public int qmin;
+
+        /// <summary>Maximum permissible quality factor</summary>
+        public int qmax;
     };
 
     /// <summary>Main exchange structure (input samples, output bytes, statistics)</summary>
@@ -228,6 +280,7 @@ namespace WebPWrapper.LowLevel
         private uint[] pad4;
     };
 
+    /// <summary>Decoding parameters.</summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct WebPDecoderConfig
     {
@@ -243,13 +296,16 @@ namespace WebPWrapper.LowLevel
     [StructLayout(LayoutKind.Explicit)]
     public struct RGBA_YUVA_Buffer
     {
+        /// <summary>Output buffer parameters for RGB/BGR/RGBA/BGRA.</summary>
         [FieldOffsetAttribute(0)]
         public WebPRGBABuffer RGBA;
 
+        /// <summary>Output buffer parameters for YUV/A.</summary>
         [FieldOffsetAttribute(0)]
         public WebPYUVABuffer YUVA;
     }
 
+    /// <summary>Output buffer parameters for YUV/A.</summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct WebPYUVABuffer
     {
@@ -279,7 +335,7 @@ namespace WebPWrapper.LowLevel
         public UIntPtr a_size;
     }
 
-    /// <summary>Generic structure for describing the output sample buffer.</summary>
+    /// <summary>Output buffer parameters for RGB/BGR/RGBA/BGRA.</summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct WebPRGBABuffer
     {
@@ -323,16 +379,9 @@ namespace WebPWrapper.LowLevel
         public int flip;
         /// <summary>alpha dithering strength in [0..100]</summary>
         public int alpha_dithering_strength;
-        /// <summary>padding for later use.</summary>
-        private UInt32 pad1;
-        /// <summary>padding for later use.</summary>
-        private UInt32 pad2;
-        /// <summary>padding for later use.</summary>
-        private UInt32 pad3;
-        /// <summary>padding for later use.</summary>
-        private UInt32 pad4;
-        /// <summary>padding for later use.</summary>
-        private UInt32 pad5;
+        /// <summary>Padding for later use.</summary>
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5, ArraySubType = UnmanagedType.U4)]
+        private uint[] pad;
     };
 
     [StructLayout(LayoutKind.Sequential)]
@@ -349,7 +398,7 @@ namespace WebPWrapper.LowLevel
     };
 
     [StructLayout(LayoutKind.Sequential)]
-    unsafe struct WebPDecParams
+    unsafe ref struct WebPDecParams
     {
         /// <summary>output buffer.</summary>
         public WebPDecBuffer output;
@@ -360,7 +409,7 @@ namespace WebPWrapper.LowLevel
         /// <summary>coordinate of the line that was last output</summary>
         public int last_y;
         /// <summary>if not NULL, use alt decoding features</summary>
-        public WebPDecoderOptions* options;
+        public IntPtr options; // public WebPDecoderOptions* options;
 
         /// <summary>rescalers</summary>
         public WebPRescaler* scaler_y, scaler_u, scaler_v, scaler_a;

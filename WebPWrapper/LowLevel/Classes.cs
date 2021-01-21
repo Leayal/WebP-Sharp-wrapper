@@ -6,12 +6,13 @@ using System.Text;
 namespace WebPWrapper.LowLevel
 {
     [StructLayout(LayoutKind.Sequential)]
-    unsafe class WebPIDecoder
+    unsafe ref struct WebPIDecoder
     {
         /// <summary>current decoding state</summary>
-        internal DecState state_;
+        public DecState state_;
         /// <summary>Params to store output info</summary>
-        internal WebPDecParams params_;
+        public WebPDecParams params_;
+
         /// <summary>for down-casting 'dec_'</summary>
         public int is_lossless_;
         /// <summary>either a VP8Decoder or a VP8LDecoder instance</summary>
