@@ -13,9 +13,6 @@ namespace WebPWrapper.WPF
     /// <summary>Simple webp wrapper for WPF.</summary>
     public class Webp : IDisposable
     {
-        private static readonly byte[] WEBP_CONTAINER_HEADER_1 = System.Text.Encoding.ASCII.GetBytes("RIFF"),
-                                       WEBP_CONTAINER_HEADER_2 = System.Text.Encoding.ASCII.GetBytes("WEBP");
-
         private readonly WebpFactory webp;
         private bool disposed;
 
@@ -85,26 +82,19 @@ namespace WebPWrapper.WPF
                     {
                         if (dataStream.Read(bytes, 0, 12) == 12)
                         {
-                            ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(bytes, 0, 4),
-                                               header = new ReadOnlySpan<byte>(WEBP_CONTAINER_HEADER_1);
-                            if (span.SequenceEqual(header))
+                            if (WebpFactory.TryGetFileSizeFromImage(new ReadOnlyMemory<byte>(bytes), out length))
                             {
-                                span = new ReadOnlySpan<byte>(bytes, 8, 4);
-                                header = new ReadOnlySpan<byte>(WEBP_CONTAINER_HEADER_2);
-                                if (span.SequenceEqual(header))
+                                length += 8; // full image file's length.
+                                if (length > bytes.Length)
                                 {
-                                    length = BitConverter.ToInt32(bytes, 4) + 8;
-                                    if (length > bytes.Length)
-                                    {
-                                        ArrayPool<byte>.Shared.Return(bytes);
-                                        bytes = ArrayPool<byte>.Shared.Rent(length);
-                                    }
-                                    dataStream.Position = currentPos;
-                                    if (dataStream.Read(bytes, 0, length) == length)
-                                    {
-                                        var mem = new ReadOnlyMemory<byte>(bytes, 0, length);
-                                        return this.Decode(mem, options);
-                                    }
+                                    ArrayPool<byte>.Shared.Return(bytes);
+                                    bytes = ArrayPool<byte>.Shared.Rent(length);
+                                }
+                                dataStream.Position = currentPos;
+                                if (dataStream.Read(bytes, 0, length) == length)
+                                {
+                                    var mem = new ReadOnlyMemory<byte>(bytes, 0, length);
+                                    return this.Decode(mem, options);
                                 }
                             }
                         }

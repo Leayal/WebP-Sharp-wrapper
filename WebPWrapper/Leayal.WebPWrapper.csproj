@@ -11,12 +11,12 @@
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageIcon>project-icon.png</PackageIcon>
     <PackageProjectUrl>https://github.com/Leayal/WebP-Sharp-wrapper</PackageProjectUrl>
-    <PackageReleaseNotes>(You still need the native library of WebP codec)</PackageReleaseNotes>
-    <PackageTags>imaging codec webp wrapper</PackageTags>
+    <PackageReleaseNotes>Add convenient static method to check/parse whether a file/buffer is a Webp image without using the native library.</PackageReleaseNotes>
+    <PackageTags>imaging codec webp wrapper netstandard2</PackageTags>
     <PackageId>Leayal.WebPWrapper</PackageId>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <AssemblyName>Leayal.WebPWrapper</AssemblyName>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

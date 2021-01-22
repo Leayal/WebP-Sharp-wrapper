@@ -15,8 +15,8 @@
 	  <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
 	  <PackageIcon>project-icon.png</PackageIcon>
 	  <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-	  <PackageReleaseNotes>Some more optimizations for decoding from stream.</PackageReleaseNotes>
-	  <Version>1.0.3</Version>
+	  <PackageReleaseNotes>No changes. However, up-to-date with the base library which has improvement.</PackageReleaseNotes>
+	  <Version>1.0.4</Version>
 	  <DefineConstants>WINFORMS</DefineConstants>
   </PropertyGroup>
 

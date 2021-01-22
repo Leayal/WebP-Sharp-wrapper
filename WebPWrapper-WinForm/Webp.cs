@@ -13,22 +13,27 @@ namespace WebPWrapper.WinForms
     /// <summary>Simple webp wrapper for Windows Forms.</summary>
     public class Webp : IDisposable
     {
-        private static readonly byte[] WEBP_CONTAINER_HEADER_1 = System.Text.Encoding.ASCII.GetBytes("RIFF"),
-                                       WEBP_CONTAINER_HEADER_2 = System.Text.Encoding.ASCII.GetBytes("WEBP");
-
         private readonly WebpFactory webp;
         private bool disposed;
+        private readonly bool _shouldDisposeFactory;
 
         /// <summary>Initialize a new <see cref="Webp"/> instance with the given library path.</summary>
         /// <param name="libraryPath">The file path to the native webp library.</param>
-        public Webp(string libraryPath) : this(new WebpFactory(libraryPath)) { }
+        public Webp(string libraryPath) : this(new WebpFactory(libraryPath), true) { }
 
         /// <summary>Initialize a new <see cref="Webp"/> instance with the given <seealso cref="WebpFactory"/>.</summary>
-        public Webp(WebpFactory factory)
+        /// <param name="factory">The <seealso cref="WebpFactory"/> to wrap.</param>
+        /// <param name="disposeFactory">Determines whether the given <seealso cref="WebpFactory"/> will be disposed when this <seealso cref="Webp"/> instance is disposed.</param>
+        public Webp(WebpFactory factory, bool disposeFactory)
         {
             this.disposed = false;
+            this._shouldDisposeFactory = disposeFactory;
             this.webp = factory;
         }
+
+        /// <summary></summary>
+        /// <return></return>
+        public WebpFactory Factory => this.webp;
 
         /// <summary>Decodes Webp data stream to <seealso cref="Bitmap"/>.</summary>
         /// <param name="dataStream">The data stream which contains WebP image.</param>
@@ -85,26 +90,19 @@ namespace WebPWrapper.WinForms
                     {
                         if (dataStream.Read(bytes, 0, 12) == 12)
                         {
-                            ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(bytes, 0, 4),
-                                               header = new ReadOnlySpan<byte>(WEBP_CONTAINER_HEADER_1);
-                            if (span.SequenceEqual(header))
+                            if (WebpFactory.TryGetFileSizeFromImage(new ReadOnlyMemory<byte>(bytes), out length))
                             {
-                                span = new ReadOnlySpan<byte>(bytes, 8, 4);
-                                header = new ReadOnlySpan<byte>(WEBP_CONTAINER_HEADER_2);
-                                if (span.SequenceEqual(header))
+                                length += 8; // full image file's length.
+                                if (length > bytes.Length)
                                 {
-                                    length = BitConverter.ToInt32(bytes, 4) + 8;
-                                    if (length > bytes.Length)
-                                    {
-                                        ArrayPool<byte>.Shared.Return(bytes);
-                                        bytes = ArrayPool<byte>.Shared.Rent(length);
-                                    }
-                                    dataStream.Position = currentPos;
-                                    if (dataStream.Read(bytes, 0, length) == length)
-                                    {
-                                        var mem = new ReadOnlyMemory<byte>(bytes, 0, length);
-                                        return this.Decode(mem, options);
-                                    }
+                                    ArrayPool<byte>.Shared.Return(bytes);
+                                    bytes = ArrayPool<byte>.Shared.Rent(length);
+                                }
+                                dataStream.Position = currentPos;
+                                if (dataStream.Read(bytes, 0, length) == length)
+                                {
+                                    var mem = new ReadOnlyMemory<byte>(bytes, 0, length);
+                                    return this.Decode(mem, options);
                                 }
                             }
                         }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using WebPWrapper.LowLevel;
 
@@ -12,6 +11,8 @@ namespace WebPWrapper
     /// </summary>
     public sealed class WebpFactory : IDisposable
     {
+        private static readonly byte[] WEBP_CONTAINER_SIGNATURE = Encoding.ASCII.GetBytes("RIFFWEBP");
+
         private ILibwebp library;
         private bool disposed;
 
@@ -526,6 +527,82 @@ namespace WebPWrapper
                 }
             }
             return result;
+        }
+
+        /// <summary>Check whether the buffer is a RIFF image container.</summary>
+        /// <param name="data">The data buffer to check for the image container.</param>
+        public static bool IsRiffContainer(ReadOnlySpan<byte> data)
+        {
+            if (data.Length < 4) return false;
+            return data.Slice(0, 4).SequenceEqual(new ReadOnlySpan<byte>(WEBP_CONTAINER_SIGNATURE, 0, 4));
+        }
+
+        /// <summary>Check whether the buffer is a RIFF image container which contains Webp image.</summary>
+        /// <param name="data">The data buffer to check for the webp image.</param>
+        /// <returns>True if the buffer has RIFF container at the beginning and the container has webp image data. Otherwise false.</returns>
+        public static bool IsRiffContainerWithWebP(ReadOnlySpan<byte> data)
+        {
+            if (data.Length >= 12 && IsRiffContainer(data))
+            {
+                return data.Slice(8, 4).SequenceEqual(new ReadOnlySpan<byte>(WEBP_CONTAINER_SIGNATURE, 4, 4));
+            }
+            return false;
+        }
+
+        /// <summary>Check whether the buffer is a RIFF image container which contains Webp image and parse the webp data length from the container.</summary>
+        /// <param name="data">The data buffer to check for the webp image.</param>
+        /// <param name="length">The variable to store the parsed length.</param>
+        /// <remarks>The parsed length DOES NOT take account of the 8-byte length which contains the 4-byte RIFF container's signature and the 4-byte data length value itself in the container (an <seealso cref="Int32"/>). In other words, a physical webp image file on disk will be equal to "length + 8".</remarks>
+        /// <returns>True if the buffer has RIFF container at the beginning and the container has webp image data. Otherwise false.</returns>
+        public static bool TryGetFileSizeFromImage(ReadOnlySpan<byte> data, out int length)
+        {
+            if (IsRiffContainerWithWebP(data))
+            {
+                unsafe
+                {
+                    fixed (byte* b = data)
+                    {
+                        length = Marshal.ReadInt32(new IntPtr(b), 4);
+                    }
+                }
+                return true;
+            }
+            length = 0;
+            return false;
+        }
+
+        /// <summary>Check whether the buffer is a RIFF image container.</summary>
+        /// <param name="data">The data buffer to check for the image container.</param>
+        /// <returns>True if the buffer has RIFF container at the beginning. Otherwise false.</returns>
+        public static bool IsRiffContainer(ReadOnlyMemory<byte> data) => IsRiffContainer(data.Span);
+
+        /// <summary>Check whether the buffer is a RIFF image container which contains Webp image.</summary>
+        /// <param name="data">The data buffer to check for the webp image.</param>
+        /// <returns>True if the buffer has RIFF container at the beginning and the container has webp image data. Otherwise false.</returns>
+        public static bool IsRiffContainerWithWebP(ReadOnlyMemory<byte> data) => IsRiffContainerWithWebP(data.Span);
+
+        /// <summary>Check whether the buffer is a RIFF image container which contains Webp image and parse the webp data length from the container.</summary>
+        /// <param name="data">The data buffer to check for the webp image.</param>
+        /// <param name="length">The variable to store the parsed length.</param>
+        /// <remarks>The parsed length DOES NOT take account of the 8-byte length which contains the 4-byte RIFF container's signature and the 4-byte data length value itself in the container (an <seealso cref="Int32"/>). In other words, a physical webp image file on disk will be equal to "length + 8".</remarks>
+        /// <returns>True if the buffer has RIFF container at the beginning and the container has webp image data. Otherwise false.</returns>
+        public static bool TryGetFileSizeFromImage(ReadOnlyMemory<byte> data, out int length)
+        {
+            if (IsRiffContainerWithWebP(data))
+            {
+                using (var pinned = data.Pin())
+                {
+                    IntPtr pointer;
+                    unsafe
+                    {
+                        pointer = new IntPtr(pinned.Pointer);
+                    }
+                    length = Marshal.ReadInt32(pointer, 4);
+                }
+                return true;
+            }
+            length = 0;
+            return false;
         }
         #endregion
 
