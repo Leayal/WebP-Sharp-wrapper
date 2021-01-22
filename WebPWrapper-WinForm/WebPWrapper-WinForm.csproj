@@ -15,7 +15,7 @@
 	  <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
 	  <PackageIcon>project-icon.png</PackageIcon>
 	  <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-	  <PackageReleaseNotes>No changes. However, up-to-date with the base library which has improvement.</PackageReleaseNotes>
+	  <PackageReleaseNotes>Expose WebpFactory in Webp class for convenience(?).</PackageReleaseNotes>
 	  <Version>1.0.4</Version>
 	  <DefineConstants>WINFORMS</DefineConstants>
   </PropertyGroup>

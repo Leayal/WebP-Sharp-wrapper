@@ -31,8 +31,7 @@ namespace WebPWrapper.WinForms
             this.webp = factory;
         }
 
-        /// <summary></summary>
-        /// <return></return>
+        /// <summary>Gets the <seealso cref="WebpFactory"/> which is associated with this <seealso cref="Webp"/> instance.</summary>
         public WebpFactory Factory => this.webp;
 
         /// <summary>Decodes Webp data stream to <seealso cref="Bitmap"/>.</summary>
@@ -427,7 +426,10 @@ namespace WebPWrapper.WinForms
             if (this.disposed) return;
             this.disposed = true;
 
-            this.webp.Dispose();
+            if (this._shouldDisposeFactory)
+            {
+                this.webp.Dispose();
+            }
         }
     }
 }
