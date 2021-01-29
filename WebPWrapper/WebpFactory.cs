@@ -204,6 +204,7 @@ namespace WebPWrapper
         /// <exception cref="WebpDecodeException">Error occured during decoding operation in the native library. Check the <seealso cref="WebpDecodeException.ErrorCode"/> to see the error.</exception>
         public void DecodeRGB(IntPtr input_buffer, UIntPtr input_buffer_size, IntPtr output_buffer, UIntPtr output_buffer_size, Colorspace output_colorspace, DecoderOptions options)
         {
+            this.ThrowIfDisposed();
             int bpp;
             switch (output_colorspace)
             {
@@ -434,6 +435,7 @@ namespace WebPWrapper
         /// <returns>True if success. Otherwise false, usually failure because of format error?</returns>
         public bool TryGetImageSize(ReadOnlySpan<byte> data, out int imageWidth, out int imageHeight)
         {
+            this.ThrowIfDisposed();
             bool result;
             unsafe
             {
@@ -452,6 +454,7 @@ namespace WebPWrapper
         /// <returns>True if success. Otherwise false, usually failure because of format error?</returns>
         public bool TryGetImageSize(ReadOnlyMemory<byte> data, out int imageWidth, out int imageHeight)
         {
+            this.ThrowIfDisposed();
             bool result;
             using (var pinned = data.Pin())
             {
@@ -468,6 +471,7 @@ namespace WebPWrapper
         /// <returns>True if success. Otherwise false, usually failure because of format error?</returns>
         public bool ValidateImageHeader(ReadOnlySpan<byte> data)
         {
+            this.ThrowIfDisposed();
             bool result;
             unsafe
             {
@@ -484,6 +488,7 @@ namespace WebPWrapper
         /// <returns>True if success. Otherwise false, usually failure because of format error?</returns>
         public bool ValidateImageHeader(ReadOnlyMemory<byte> data)
         {
+            this.ThrowIfDisposed();
             bool result;
             using (var pinned = data.Pin())
             {
@@ -501,6 +506,7 @@ namespace WebPWrapper
         /// <returns><seealso cref="VP8StatusCode.VP8_STATUS_OK"/> on success. Otherwise the error code.</returns>
         public VP8StatusCode TryGetImageHeaderInfo(ReadOnlyMemory<byte> data, ref WebPBitstreamFeatures feature)
         {
+            this.ThrowIfDisposed();
             VP8StatusCode result;
             using (var pinned = data.Pin())
             {
@@ -518,6 +524,7 @@ namespace WebPWrapper
         /// <returns><seealso cref="VP8StatusCode.VP8_STATUS_OK"/> on success. Otherwise the error code.</returns>
         public VP8StatusCode TryGetImageHeaderInfo(ReadOnlySpan<byte> data, ref WebPBitstreamFeatures feature)
         {
+            this.ThrowIfDisposed();
             VP8StatusCode result;
             unsafe
             {

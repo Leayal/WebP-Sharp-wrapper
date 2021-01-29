@@ -10,13 +10,15 @@
     <Description>WebPWrapper for .NET Standard 2.0 (You still need the native library of WebP codec. Check the project site to see the "build instruction" for native library, or get the pre-compiled ones for windows on the site)</Description>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageIcon>project-icon.png</PackageIcon>
-    <PackageProjectUrl>https://github.com/Leayal/WebP-Sharp-wrapper</PackageProjectUrl>
-    <PackageReleaseNotes>Add convenient static method to check/parse whether a file/buffer is a Webp image without using the native library.</PackageReleaseNotes>
+    <PackageProjectUrl></PackageProjectUrl>
+    <PackageReleaseNotes>Correct the configuration on WebPConfig struct for WebPEncode method. Add some safety check in WebpFactory class.</PackageReleaseNotes>
     <PackageTags>imaging codec webp wrapper netstandard2</PackageTags>
     <PackageId>Leayal.WebPWrapper</PackageId>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <AssemblyName>Leayal.WebPWrapper</AssemblyName>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
+    <RepositoryUrl>https://github.com/Leayal/WebP-Sharp-wrapper</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

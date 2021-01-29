@@ -19,6 +19,7 @@ namespace WebPWrapper.WPF
 
         /// <summary>Initialize a new <see cref="Webp"/> instance with the given library path.</summary>
         /// <param name="libraryPath">The file path to the native webp library.</param>
+        /// <remarks>Equivalent to <code>new <seealso cref="Webp"/>(new <seealso cref="WebpFactory"/>(<paramref name="libraryPath"/>), true)</code></remarks>
         public Webp(string libraryPath) : this(new WebpFactory(libraryPath), true) { }
 
         /// <summary>Initialize a new <see cref="Webp"/> instance with the given <seealso cref="WebpFactory"/>.</summary>
@@ -32,6 +33,7 @@ namespace WebPWrapper.WPF
         }
 
         /// <summary>Gets the <seealso cref="WebpFactory"/> which is associated with this <seealso cref="Webp"/> instance.</summary>
+        /// <remarks>The associated <seealso cref="WebpFactory"/> instance should not be disposed before this <seealso cref="Webp"/> instance does.</remarks>
         public WebpFactory Factory => this.webp;
 
         /// <summary>Decodes Webp data stream to <seealso cref="BitmapSource"/>.</summary>

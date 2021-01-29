@@ -181,19 +181,19 @@ namespace WebPWrapper
             if (val_isLossy)
             {
                 config.lossless = 0;
-                config.segments = 4;
-                config.preprocessing = 4;
             }
             else if (val_isLossless)
             {
                 config.lossless = 1;
-                config.near_lossless = 0;
+                config.near_lossless = 100;
             }
             else if (val_isNearLossless)
             {
-                // config.lossless = 1;
+                config.lossless = 1;
                 config.near_lossless = Convert.ToInt32(this._quality);
             }
+            config.segments = 4;
+            config.preprocessing = 4;
 
             config.partitions = this.SupportProgressiveDecoding ? 0 : 3;
 

@@ -11,14 +11,16 @@
 	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	<Authors>Dramiel Leayal</Authors>
 	<Description>WebPWrapper for .NET (WPF)</Description>
-	<PackageProjectUrl>https://github.com/Leayal/WebP-Sharp-wrapper</PackageProjectUrl>
+	<PackageProjectUrl></PackageProjectUrl>
 	<PackageTags>imaging codec webp net-framework net-core wpf</PackageTags>
 	<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
 	<PackageIcon>project-icon.png</PackageIcon>
 	<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-	<PackageReleaseNotes>Expose WebpFactory in Webp class for convenience(?).</PackageReleaseNotes>
-	<Version>1.0.4</Version>
+	<PackageReleaseNotes>Updated documents for the exposed property.</PackageReleaseNotes>
+	<Version>1.0.5</Version>
 	  <DefineConstants>WPF</DefineConstants>
+	  <RepositoryUrl>https://github.com/Leayal/WebP-Sharp-wrapper</RepositoryUrl>
+	  <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>
