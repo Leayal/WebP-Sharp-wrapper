@@ -19,7 +19,7 @@
 	<PackageReleaseNotes>Updated documents for the exposed property.</PackageReleaseNotes>
 	<Version>1.0.5</Version>
 	  <DefineConstants>WPF</DefineConstants>
-	  <RepositoryUrl>https://github.com/Leayal/WebP-Sharp-wrapper</RepositoryUrl>
+	  <RepositoryUrl>https://github.com/Leayal/WebP-Sharp-wrapper.git</RepositoryUrl>
 	  <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 

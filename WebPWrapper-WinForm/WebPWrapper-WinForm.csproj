@@ -19,7 +19,7 @@
 	  <Version>1.0.5</Version>
 	  <DefineConstants>WINFORMS</DefineConstants>
 	  <RepositoryType>git</RepositoryType>
-	  <RepositoryUrl>https://github.com/Leayal/WebP-Sharp-wrapper</RepositoryUrl>
+	  <RepositoryUrl>https://github.com/Leayal/WebP-Sharp-wrapper.git</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
