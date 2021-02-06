@@ -1,4 +1,4 @@
-Built from source code from release v1.1.0 from [webmproject's libwebp](https://github.com/webmproject/libwebp/)
+Built from source code from release v1.2.0 from [webmproject's libwebp](https://github.com/webmproject/libwebp/)
 
 Check file [COPYING](COPYING) for license.
 
